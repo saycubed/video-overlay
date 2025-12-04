@@ -1,0 +1,207 @@
+.timeline-container {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 1.25rem;
+}
+
+.timeline-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.timeline-header h3 {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.overlay-count {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.timeline-track {
+  position: relative;
+  height: 60px;
+  background: var(--bg-tertiary);
+  border-radius: 6px;
+  cursor: pointer;
+  overflow: visible;
+}
+
+.timeline-progress {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  background: rgba(255, 51, 102, 0.15);
+  pointer-events: none;
+  border-radius: 6px 0 0 6px;
+}
+
+.timeline-playhead {
+  position: absolute;
+  top: -4px;
+  width: 3px;
+  height: calc(100% + 8px);
+  background: var(--accent-primary);
+  transform: translateX(-50%);
+  pointer-events: none;
+  z-index: 10;
+  border-radius: 2px;
+}
+
+.timeline-playhead::before {
+  content: '';
+  position: absolute;
+  top: -6px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 12px;
+  height: 12px;
+  background: var(--accent-primary);
+  border-radius: 50%;
+}
+
+.timeline-overlay {
+  position: absolute;
+  top: 8px;
+  height: 28px;
+  background: var(--accent-secondary);
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  min-width: 24px;
+  opacity: 0.8;
+  transition: opacity 0.15s;
+}
+
+.timeline-overlay:hover,
+.timeline-overlay.active {
+  opacity: 1;
+}
+
+.timeline-overlay.active {
+  box-shadow: 0 0 0 2px white;
+}
+
+.overlay-handle {
+  width: 8px;
+  height: 100%;
+  cursor: ew-resize;
+  flex-shrink: 0;
+}
+
+.handle-start {
+  border-radius: 4px 0 0 4px;
+}
+
+.handle-end {
+  border-radius: 0 4px 4px 0;
+}
+
+.overlay-handle:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.overlay-content {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: move;
+  overflow: hidden;
+}
+
+.overlay-type {
+  font-size: 0.75rem;
+  color: var(--bg-primary);
+  font-weight: 700;
+}
+
+.timeline-ticks {
+  position: absolute;
+  bottom: -20px;
+  left: 0;
+  right: 0;
+  height: 16px;
+  pointer-events: none;
+}
+
+.tick {
+  position: absolute;
+  transform: translateX(-50%);
+}
+
+.tick::before {
+  content: '';
+  position: absolute;
+  top: -24px;
+  left: 50%;
+  width: 1px;
+  height: 4px;
+  background: var(--border-color);
+}
+
+.tick span {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+}
+
+.overlay-editor {
+  margin-top: 2rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border-color);
+}
+
+.overlay-details {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.time-inputs {
+  display: flex;
+  gap: 1rem;
+}
+
+.time-inputs label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.time-inputs input {
+  width: 70px;
+  padding: 0.4rem 0.5rem;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  color: var(--text-primary);
+  font-size: 0.85rem;
+}
+
+.time-inputs input:focus {
+  outline: none;
+  border-color: var(--accent-secondary);
+}
+
+.delete-btn {
+  padding: 0.4rem 1rem;
+  background: transparent;
+  border: 1px solid #ff4444;
+  border-radius: 4px;
+  color: #ff4444;
+  font-size: 0.8rem;
+  margin-left: auto;
+}
+
+.delete-btn:hover {
+  background: #ff4444;
+  color: white;
+}
