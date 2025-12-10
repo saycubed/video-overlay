@@ -10,7 +10,8 @@ function OverlayCanvas({
   isPlaying,
   activeOverlayId,
   onUpdateOverlay,
-  onSelectOverlay
+  onSelectOverlay,
+  onTogglePlayPause
 }) {
   const canvasRef = useRef(null);
   const contextRef = useRef(null);
@@ -155,8 +156,6 @@ function OverlayCanvas({
   }, []);
 
   const startDrawing = useCallback((e) => {
-    if (isPlaying) return;
-
     const coords = getCoordinates(e);
 
     if (tool === 'select') {
@@ -171,9 +170,15 @@ function OverlayCanvas({
         setDragStart(coords);
       } else {
         onSelectOverlay(null);
+        // Toggle play/pause when clicking empty area with select tool
+        if (onTogglePlayPause) {
+          onTogglePlayPause();
+        }
       }
       return;
     }
+
+    if (isPlaying) return;
 
     if (tool === 'text') {
       setTextInput({ show: true, x: coords.x, y: coords.y, value: '' });
@@ -190,7 +195,7 @@ function OverlayCanvas({
       ctx.lineWidth = brushSize;
       ctx.moveTo(coords.x, coords.y);
     }
-  }, [isPlaying, tool, brushColor, brushSize, getCoordinates, visibleOverlays, checkOverlayHit, onSelectOverlay]);
+  }, [isPlaying, tool, brushColor, brushSize, getCoordinates, visibleOverlays, checkOverlayHit, onSelectOverlay, onTogglePlayPause]);
 
   const draw = useCallback((e) => {
     const coords = getCoordinates(e);

@@ -184,7 +184,18 @@ function App() {
             />
             
             <div className="video-area">
-              <div className="video-wrapper">
+              <div
+                className="video-wrapper"
+                onClick={(e) => {
+                  // Only toggle play/pause if clicking the video wrapper itself
+                  if (e.target.classList.contains('video-wrapper') ||
+                      e.target.closest('.video-player')) {
+                    if (tool === 'select') {
+                      setIsPlaying(!isPlaying);
+                    }
+                  }
+                }}
+              >
                 <VideoPlayer
                   url={videoUrl}
                   playing={isPlaying}
@@ -204,6 +215,7 @@ function App() {
                   activeOverlayId={activeOverlayId}
                   onUpdateOverlay={updateOverlay}
                   onSelectOverlay={setActiveOverlayId}
+                  onTogglePlayPause={() => setIsPlaying(!isPlaying)}
                 />
               </div>
               
