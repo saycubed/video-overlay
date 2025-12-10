@@ -1,5 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, signInWithRedirect, getRedirectResult, signOut } from 'firebase/auth';
+import { getFirestore, collection, addDoc, getDoc, doc } from 'firebase/firestore';
 
 // Firebase configuration
 // For Firebase JS SDK v7.20.0 and later, measurementId is optional
@@ -16,6 +17,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const googleProvider = new GoogleAuthProvider();
+const db = getFirestore(app);
 
 // Add YouTube scope for YouTube access
 googleProvider.addScope('https://www.googleapis.com/auth/youtube.readonly');
@@ -54,4 +56,36 @@ export const signOutUser = async () => {
   }
 };
 
-export { auth };
+// Save overlay data and return short ID
+export const saveOverlayData = async (videoUrl, overlays) => {
+  try {
+    const docRef = await addDoc(collection(db, 'overlays'), {
+      videoUrl,
+      overlays,
+      createdAt: new Date().toISOString()
+    });
+    return docRef.id;
+  } catch (error) {
+    console.error('Error saving overlay data:', error);
+    throw error;
+  }
+};
+
+// Load overlay data by ID
+export const loadOverlayData = async (id) => {
+  try {
+    const docRef = doc(db, 'overlays', id);
+    const docSnap = await getDoc(docRef);
+
+    if (docSnap.exists()) {
+      return docSnap.data();
+    } else {
+      throw new Error('Overlay data not found');
+    }
+  } catch (error) {
+    console.error('Error loading overlay data:', error);
+    throw error;
+  }
+};
+
+export { auth, db };

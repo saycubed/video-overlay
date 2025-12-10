@@ -4,7 +4,7 @@ import OverlayCanvas from './components/OverlayCanvas';
 import Timeline from './components/Timeline';
 import Toolbar from './components/Toolbar';
 import ShareModal from './components/ShareModal';
-import LZString from 'lz-string';
+import { saveOverlayData, loadOverlayData } from './firebase';
 import './App.css';
 
 function App() {
@@ -24,17 +24,18 @@ function App() {
   // Load from URL on mount
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const data = params.get('d');
-    if (data) {
-      try {
-        const decoded = LZString.decompressFromEncodedURIComponent(data);
-        const parsed = JSON.parse(decoded);
-        if (parsed.videoUrl) setVideoUrl(parsed.videoUrl);
-        if (parsed.overlays) setOverlays(parsed.overlays);
-        if (parsed.videoUrl) setVideoLoaded(true);
-      } catch (e) {
-        console.error('Failed to load shared data:', e);
-      }
+    const shareId = params.get('s');
+    if (shareId) {
+      loadOverlayData(shareId)
+        .then(data => {
+          if (data.videoUrl) setVideoUrl(data.videoUrl);
+          if (data.overlays) setOverlays(data.overlays);
+          if (data.videoUrl) setVideoLoaded(true);
+        })
+        .catch(error => {
+          console.error('Failed to load shared data:', error);
+          alert('Failed to load shared overlay. The link may be invalid or expired.');
+        });
     }
   }, []);
 
@@ -108,10 +109,14 @@ function App() {
     );
   }, [overlays, currentTime]);
 
-  const generateShareUrl = useCallback(() => {
-    const data = { videoUrl, overlays };
-    const compressed = LZString.compressToEncodedURIComponent(JSON.stringify(data));
-    return `${window.location.origin}${window.location.pathname}?d=${compressed}`;
+  const generateShareUrl = useCallback(async () => {
+    try {
+      const shareId = await saveOverlayData(videoUrl, overlays);
+      return `${window.location.origin}${window.location.pathname}?s=${shareId}`;
+    } catch (error) {
+      console.error('Error generating share URL:', error);
+      throw error;
+    }
   }, [videoUrl, overlays]);
 
   const seekTo = useCallback((time) => {
@@ -231,7 +236,7 @@ function App() {
 
       {showShareModal && (
         <ShareModal
-          url={generateShareUrl()}
+          generateUrl={generateShareUrl}
           onClose={() => setShowShareModal(false)}
         />
       )}
