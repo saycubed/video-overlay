@@ -38,8 +38,34 @@ function App() {
     }
   }, []);
 
+  const cleanYouTubeUrl = (url) => {
+    // Extract video ID from various YouTube URL formats
+    let videoId = null;
+
+    // Check for youtu.be format
+    const shortMatch = url.match(/youtu\.be\/([a-zA-Z0-9_-]+)/);
+    if (shortMatch) {
+      videoId = shortMatch[1];
+    }
+
+    // Check for youtube.com format
+    const longMatch = url.match(/[?&]v=([a-zA-Z0-9_-]+)/);
+    if (longMatch) {
+      videoId = longMatch[1];
+    }
+
+    // If we found a video ID, return clean URL
+    if (videoId) {
+      return `https://www.youtube.com/watch?v=${videoId}`;
+    }
+
+    // Otherwise return original URL (might be Vimeo or other)
+    return url;
+  };
+
   const handleVideoLoad = useCallback((url) => {
-    setVideoUrl(url);
+    const cleanUrl = cleanYouTubeUrl(url);
+    setVideoUrl(cleanUrl);
     setVideoLoaded(true);
     setOverlays([]);
     setCurrentTime(0);
@@ -171,6 +197,8 @@ function App() {
                   onAddOverlay={addOverlay}
                   isPlaying={isPlaying}
                   activeOverlayId={activeOverlayId}
+                  onUpdateOverlay={updateOverlay}
+                  onSelectOverlay={setActiveOverlayId}
                 />
               </div>
               

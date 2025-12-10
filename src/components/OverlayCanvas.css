@@ -16,20 +16,24 @@
 
 .text-input-overlay {
   position: absolute;
-  z-index: 20;
+  z-index: 100;
   transform: translate(-4px, -12px);
+  pointer-events: auto;
 }
 
 .text-input-overlay input {
-  background: rgba(0, 0, 0, 0.8);
-  border: 2px solid var(--accent-primary);
-  border-radius: 4px;
-  padding: 0.5rem 0.75rem;
-  font-size: 1.25rem;
-  font-family: var(--font-display);
-  font-weight: 600;
-  min-width: 200px;
-  outline: none;
+  background: rgba(0, 0, 0, 0.95) !important;
+  border: 3px solid #ff3366 !important;
+  border-radius: 6px;
+  padding: 0.75rem 1rem !important;
+  font-size: 1.5rem !important;
+  font-family: 'Arial', sans-serif !important;
+  font-weight: 700 !important;
+  min-width: 250px !important;
+  min-height: 50px !important;
+  outline: none !important;
+  box-shadow: 0 4px 12px rgba(255, 51, 102, 0.8) !important;
+  -webkit-text-fill-color: inherit !important;
 }
 
 .text-input-overlay input::placeholder {
