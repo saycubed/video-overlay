@@ -47,8 +47,9 @@ function OverlayCanvas({
     ctx.clearRect(0, 0, rect.width, rect.height);
 
     visibleOverlays.forEach(overlay => {
-      const offsetX = overlay.data.offsetX || 0;
-      const offsetY = overlay.data.offsetY || 0;
+      // Convert relative offsets to absolute
+      const offsetX = (overlay.data.offsetX || 0) * rect.width;
+      const offsetY = (overlay.data.offsetY || 0) * rect.height;
       const isActive = overlay.id === activeOverlayId;
 
       if (overlay.type === 'drawing' && overlay.data.paths) {
@@ -57,11 +58,22 @@ function OverlayCanvas({
 
           ctx.beginPath();
           ctx.strokeStyle = path.color;
-          ctx.lineWidth = path.size;
-          ctx.moveTo(path.points[0].x + offsetX, path.points[0].y + offsetY);
+          // Scale line width relative to canvas size
+          ctx.lineWidth = (path.size || 4) * (rect.width / 800);
+
+          // Convert first point from relative to absolute
+          const firstPoint = {
+            x: path.points[0].x * rect.width + offsetX,
+            y: path.points[0].y * rect.height + offsetY
+          };
+          ctx.moveTo(firstPoint.x, firstPoint.y);
 
           for (let i = 1; i < path.points.length; i++) {
-            ctx.lineTo(path.points[i].x + offsetX, path.points[i].y + offsetY);
+            const point = {
+              x: path.points[i].x * rect.width + offsetX,
+              y: path.points[i].y * rect.height + offsetY
+            };
+            ctx.lineTo(point.x, point.y);
           }
           ctx.stroke();
         });
@@ -76,22 +88,27 @@ function OverlayCanvas({
           ctx.setLineDash([]);
         }
       } else if (overlay.type === 'text' && overlay.data.text) {
-        ctx.font = `${overlay.data.size || 24}px 'Syne', sans-serif`;
+        // Scale font size relative to canvas size
+        const fontSize = (overlay.data.size || 24) * (rect.width / 800);
+        ctx.font = `${fontSize}px 'Syne', sans-serif`;
         ctx.fillStyle = overlay.data.color;
-        ctx.fillText(overlay.data.text, overlay.data.x + offsetX, overlay.data.y + offsetY);
+
+        // Convert relative position to absolute
+        const textX = (overlay.data.x || 0) * rect.width + offsetX;
+        const textY = (overlay.data.y || 0) * rect.height + offsetY;
+        ctx.fillText(overlay.data.text, textX, textY);
 
         // Draw selection box for active text
         if (isActive) {
           const metrics = ctx.measureText(overlay.data.text);
-          const textHeight = overlay.data.size || 24;
           ctx.strokeStyle = '#ff3366';
           ctx.lineWidth = 2;
           ctx.setLineDash([5, 5]);
           ctx.strokeRect(
-            overlay.data.x + offsetX - 5,
-            overlay.data.y + offsetY - textHeight - 5,
+            textX - 5,
+            textY - fontSize - 5,
             metrics.width + 10,
-            textHeight + 10
+            fontSize + 10
           );
           ctx.setLineDash([]);
         }
@@ -100,13 +117,20 @@ function OverlayCanvas({
   }, [visibleOverlays, activeOverlayId]);
 
   const getDrawingBounds = (paths, offsetX, offsetY) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return { x: 0, y: 0, width: 0, height: 0 };
+    const rect = canvas.getBoundingClientRect();
+
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
     paths.forEach(path => {
       path.points.forEach(point => {
-        minX = Math.min(minX, point.x + offsetX);
-        minY = Math.min(minY, point.y + offsetY);
-        maxX = Math.max(maxX, point.x + offsetX);
-        maxY = Math.max(maxY, point.y + offsetY);
+        // Convert relative to absolute coordinates
+        const absX = point.x * rect.width + offsetX;
+        const absY = point.y * rect.height + offsetY;
+        minX = Math.min(minX, absX);
+        minY = Math.min(minY, absY);
+        maxX = Math.max(maxX, absX);
+        maxY = Math.max(maxY, absY);
       });
     });
     return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
@@ -115,14 +139,14 @@ function OverlayCanvas({
   const getCoordinates = useCallback((e) => {
     const canvas = canvasRef.current;
     const rect = canvas.getBoundingClientRect();
-    
+
     if (e.touches) {
       return {
         x: e.touches[0].clientX - rect.left,
         y: e.touches[0].clientY - rect.top
       };
     }
-    
+
     return {
       x: e.clientX - rect.left,
       y: e.clientY - rect.top
@@ -130,20 +154,24 @@ function OverlayCanvas({
   }, []);
 
   const checkOverlayHit = useCallback((coords, overlay) => {
-    const offsetX = overlay.data.offsetX || 0;
-    const offsetY = overlay.data.offsetY || 0;
+    const canvas = canvasRef.current;
+    if (!canvas) return false;
+    const rect = canvas.getBoundingClientRect();
+
+    const offsetX = (overlay.data.offsetX || 0) * rect.width;
+    const offsetY = (overlay.data.offsetY || 0) * rect.height;
 
     if (overlay.type === 'text' && overlay.data.text) {
       const ctx = contextRef.current;
-      ctx.font = `${overlay.data.size || 24}px 'Syne', sans-serif`;
+      const fontSize = (overlay.data.size || 24) * (rect.width / 800);
+      ctx.font = `${fontSize}px 'Syne', sans-serif`;
       const metrics = ctx.measureText(overlay.data.text);
-      const textHeight = overlay.data.size || 24;
-      const x = overlay.data.x + offsetX;
-      const y = overlay.data.y + offsetY;
+      const x = (overlay.data.x || 0) * rect.width + offsetX;
+      const y = (overlay.data.y || 0) * rect.height + offsetY;
 
       return coords.x >= x - 5 &&
              coords.x <= x + metrics.width + 5 &&
-             coords.y >= y - textHeight - 5 &&
+             coords.y >= y - fontSize - 5 &&
              coords.y <= y + 5;
     } else if (overlay.type === 'drawing' && overlay.data.paths) {
       const bounds = getDrawingBounds(overlay.data.paths, offsetX, offsetY);
@@ -202,8 +230,13 @@ function OverlayCanvas({
 
     // Handle dragging
     if (isDragging && tool === 'select' && activeOverlayId) {
-      const deltaX = coords.x - dragStart.x;
-      const deltaY = coords.y - dragStart.y;
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      const rect = canvas.getBoundingClientRect();
+
+      // Convert pixel delta to relative delta
+      const deltaX = (coords.x - dragStart.x) / rect.width;
+      const deltaY = (coords.y - dragStart.y) / rect.height;
 
       const activeOverlay = visibleOverlays.find(o => o.id === activeOverlayId);
       if (activeOverlay && onUpdateOverlay) {
@@ -243,9 +276,19 @@ function OverlayCanvas({
       return;
     }
 
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+
+    // Convert absolute path coordinates to relative
+    const relativePath = currentPath.map(point => ({
+      x: point.x / rect.width,
+      y: point.y / rect.height
+    }));
+
     onAddOverlay({
       paths: [{
-        points: currentPath,
+        points: relativePath,
         color: brushColor,
         size: brushSize
       }],
@@ -259,10 +302,15 @@ function OverlayCanvas({
 
   const handleTextSubmit = useCallback(() => {
     if (textInput.value.trim()) {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      const rect = canvas.getBoundingClientRect();
+
+      // Convert absolute coordinates to relative
       onAddOverlay({
         text: textInput.value,
-        x: textInput.x,
-        y: textInput.y,
+        x: textInput.x / rect.width,
+        y: textInput.y / rect.height,
         color: brushColor,
         size: brushSize * 6,
         offsetX: 0,
