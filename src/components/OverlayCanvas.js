@@ -184,6 +184,11 @@ function OverlayCanvas({
   }, []);
 
   const startDrawing = useCallback((e) => {
+    // Prevent default touch behavior (scrolling) on mobile
+    if (e.touches) {
+      e.preventDefault();
+    }
+
     const coords = getCoordinates(e);
 
     if (tool === 'select') {
@@ -226,6 +231,11 @@ function OverlayCanvas({
   }, [isPlaying, tool, brushColor, brushSize, getCoordinates, visibleOverlays, checkOverlayHit, onSelectOverlay, onTogglePlayPause]);
 
   const draw = useCallback((e) => {
+    // Prevent default touch behavior (scrolling) on mobile
+    if (e.touches) {
+      e.preventDefault();
+    }
+
     const coords = getCoordinates(e);
 
     // Handle dragging
