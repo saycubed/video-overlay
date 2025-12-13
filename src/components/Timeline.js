@@ -101,30 +101,49 @@ function Timeline({
         {overlays.map(overlay => {
           const left = (overlay.startTime / duration) * 100;
           const width = ((overlay.endTime - overlay.startTime) / duration) * 100;
-          
+
+          // Get the color from the overlay data
+          const overlayColor = overlay.data?.color || '#00ffaa';
+
+          // Get text preview for text overlays
+          const textPreview = overlay.type === 'text' && overlay.data?.text
+            ? overlay.data.text
+            : null;
+
           return (
             <div
               key={overlay.id}
               className={`timeline-overlay ${activeOverlayId === overlay.id ? 'active' : ''}`}
-              style={{ left: `${left}%`, width: `${width}%` }}
+              style={{
+                left: `${left}%`,
+                width: `${width}%`,
+                backgroundColor: overlayColor,
+                zIndex: activeOverlayId === overlay.id ? 5 : 1
+              }}
               onClick={(e) => {
                 e.stopPropagation();
                 onSelectOverlay(overlay.id);
               }}
             >
-              <div 
+              <div
                 className="overlay-handle handle-start"
                 onMouseDown={(e) => handleOverlayDrag(e, overlay, 'start')}
               />
-              <div 
+              <div
                 className="overlay-content"
                 onMouseDown={(e) => handleOverlayDrag(e, overlay, 'middle')}
               >
-                <span className="overlay-type">
-                  {overlay.type === 'text' ? 'T' : '✎'}
-                </span>
+                {textPreview ? (
+                  <span className="overlay-text-preview" title={textPreview}>
+                    {textPreview}
+                  </span>
+                ) : (
+                  <span className="overlay-type">
+                    {overlay.type === 'text' ? 'T' : '✎'}
+                  </span>
+                )}
               </div>
-              <div 
+              <div
                 className="overlay-handle handle-end"
                 onMouseDown={(e) => handleOverlayDrag(e, overlay, 'end')}
               />

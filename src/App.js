@@ -4,6 +4,7 @@ import OverlayCanvas from './components/OverlayCanvas';
 import Timeline from './components/Timeline';
 import Toolbar from './components/Toolbar';
 import ShareModal from './components/ShareModal';
+import SharedViewControls from './components/SharedViewControls';
 import { saveOverlayData, loadOverlayData } from './firebase';
 import './App.css';
 
@@ -20,12 +21,16 @@ function App() {
   const [brushSize, setBrushSize] = useState(4);
   const [showShareModal, setShowShareModal] = useState(false);
   const [playerRef, setPlayerRef] = useState(null);
+  const [isSharedView, setIsSharedView] = useState(false);
+  const [showEditControls, setShowEditControls] = useState(false);
+  const [copiedOverlay, setCopiedOverlay] = useState(null);
 
   // Load from URL on mount
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const shareId = params.get('s');
     if (shareId) {
+      setIsSharedView(true);
       loadOverlayData(shareId)
         .then(data => {
           if (data.videoUrl) setVideoUrl(data.videoUrl);
@@ -38,6 +43,39 @@ function App() {
         });
     }
   }, []);
+
+  // Handle keyboard shortcuts for copy/paste
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      // Only handle shortcuts if not typing in an input field
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+        return;
+      }
+
+      // Copy overlay (Ctrl+C or Cmd+C)
+      if ((e.ctrlKey || e.metaKey) && e.key === 'c' && activeOverlayId) {
+        e.preventDefault();
+        const overlayToCopy = overlays.find(o => o.id === activeOverlayId);
+        if (overlayToCopy) {
+          setCopiedOverlay(overlayToCopy);
+        }
+      }
+
+      // Paste overlay (Ctrl+V or Cmd+V)
+      if ((e.ctrlKey || e.metaKey) && e.key === 'v' && copiedOverlay) {
+        e.preventDefault();
+        const newOverlay = {
+          ...copiedOverlay,
+          id: Date.now().toString()
+        };
+        setOverlays(prev => [...prev, newOverlay]);
+        setActiveOverlayId(newOverlay.id);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [activeOverlayId, overlays, copiedOverlay]);
 
   const cleanYouTubeUrl = (url) => {
     // Extract video ID from various YouTube URL formats
@@ -166,22 +204,39 @@ function App() {
           </div>
         ) : (
           <div className="editor-container">
-            <Toolbar
-              tool={tool}
-              setTool={setTool}
-              brushColor={brushColor}
-              setBrushColor={setBrushColor}
-              brushSize={brushSize}
-              setBrushSize={setBrushSize}
-              onShare={() => setShowShareModal(true)}
-              onNewVideo={() => {
-                setVideoLoaded(false);
-                setVideoUrl('');
-                setOverlays([]);
-                window.history.replaceState({}, '', window.location.pathname);
-              }}
-              hasOverlays={overlays.length > 0}
-            />
+            {isSharedView && (
+              <SharedViewControls
+                showEditControls={showEditControls}
+                onToggleEdit={() => setShowEditControls(!showEditControls)}
+                onNewVideo={() => {
+                  setVideoLoaded(false);
+                  setVideoUrl('');
+                  setOverlays([]);
+                  setIsSharedView(false);
+                  setShowEditControls(false);
+                  window.history.replaceState({}, '', window.location.pathname);
+                }}
+              />
+            )}
+
+            {(!isSharedView || showEditControls) && (
+              <Toolbar
+                tool={tool}
+                setTool={setTool}
+                brushColor={brushColor}
+                setBrushColor={setBrushColor}
+                brushSize={brushSize}
+                setBrushSize={setBrushSize}
+                onShare={() => setShowShareModal(true)}
+                onNewVideo={() => {
+                  setVideoLoaded(false);
+                  setVideoUrl('');
+                  setOverlays([]);
+                  window.history.replaceState({}, '', window.location.pathname);
+                }}
+                hasOverlays={overlays.length > 0}
+              />
+            )}
             
             <div className="video-area">
               <div
@@ -216,6 +271,7 @@ function App() {
                   onUpdateOverlay={updateOverlay}
                   onSelectOverlay={setActiveOverlayId}
                   onTogglePlayPause={() => setIsPlaying(!isPlaying)}
+                  showOutlines={!isSharedView || showEditControls}
                 />
               </div>
               
@@ -232,16 +288,18 @@ function App() {
               </div>
             </div>
 
-            <Timeline
-              duration={duration}
-              currentTime={currentTime}
-              overlays={overlays}
-              activeOverlayId={activeOverlayId}
-              onSeek={seekTo}
-              onSelectOverlay={setActiveOverlayId}
-              onUpdateOverlay={updateOverlay}
-              onDeleteOverlay={deleteOverlay}
-            />
+            {(!isSharedView || showEditControls) && (
+              <Timeline
+                duration={duration}
+                currentTime={currentTime}
+                overlays={overlays}
+                activeOverlayId={activeOverlayId}
+                onSeek={seekTo}
+                onSelectOverlay={setActiveOverlayId}
+                onUpdateOverlay={updateOverlay}
+                onDeleteOverlay={deleteOverlay}
+              />
+            )}
           </div>
         )}
       </main>

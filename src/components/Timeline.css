@@ -122,6 +122,18 @@
   font-weight: 700;
 }
 
+.overlay-text-preview {
+  font-size: 0.7rem;
+  color: var(--bg-primary);
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 0 4px;
+  max-width: 100%;
+  display: block;
+}
+
 .timeline-ticks {
   position: absolute;
   bottom: -20px;

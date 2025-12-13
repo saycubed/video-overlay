@@ -11,7 +11,8 @@ function OverlayCanvas({
   activeOverlayId,
   onUpdateOverlay,
   onSelectOverlay,
-  onTogglePlayPause
+  onTogglePlayPause,
+  showOutlines = true
 }) {
   const canvasRef = useRef(null);
   const contextRef = useRef(null);
@@ -79,7 +80,7 @@ function OverlayCanvas({
         });
 
         // Draw selection box for active overlay
-        if (isActive) {
+        if (isActive && showOutlines) {
           const bounds = getDrawingBounds(overlay.data.paths, offsetX, offsetY);
           ctx.strokeStyle = '#ff3366';
           ctx.lineWidth = 2;
@@ -99,7 +100,7 @@ function OverlayCanvas({
         ctx.fillText(overlay.data.text, textX, textY);
 
         // Draw selection box for active text
-        if (isActive) {
+        if (isActive && showOutlines) {
           const metrics = ctx.measureText(overlay.data.text);
           ctx.strokeStyle = '#ff3366';
           ctx.lineWidth = 2;
@@ -114,7 +115,7 @@ function OverlayCanvas({
         }
       }
     });
-  }, [visibleOverlays, activeOverlayId]);
+  }, [visibleOverlays, activeOverlayId, showOutlines]);
 
   const getDrawingBounds = (paths, offsetX, offsetY) => {
     const canvas = canvasRef.current;
