@@ -5,6 +5,10 @@ function OverlayCanvas({
   tool,
   brushColor,
   brushSize,
+  textFont,
+  setBrushColor,
+  setBrushSize,
+  setTextFont,
   visibleOverlays,
   onAddOverlay,
   isPlaying,
@@ -18,9 +22,16 @@ function OverlayCanvas({
   const contextRef = useRef(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [currentPath, setCurrentPath] = useState([]);
-  const [textInput, setTextInput] = useState({ show: false, x: 0, y: 0, value: '' });
+  const [textInput, setTextInput] = useState({
+    show: false,
+    x: 0,
+    y: 0,
+    value: '',
+    editingId: null
+  });
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [cursorVisible, setCursorVisible] = useState(true);
 
   // Initialize canvas
   useEffect(() => {
@@ -30,13 +41,98 @@ function OverlayCanvas({
     const rect = canvas.getBoundingClientRect();
     canvas.width = rect.width * 2;
     canvas.height = rect.height * 2;
-    
+
     const ctx = canvas.getContext('2d');
     ctx.scale(2, 2);
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
     contextRef.current = ctx;
   }, []);
+
+  // Cursor blinking animation
+  useEffect(() => {
+    if (!textInput.show) return;
+
+    const interval = setInterval(() => {
+      setCursorVisible(prev => !prev);
+    }, 500);
+
+    return () => clearInterval(interval);
+  }, [textInput.show]);
+
+  // Handle keyboard input for text
+  useEffect(() => {
+    if (!textInput.show) return;
+
+    const handleKeyDown = (e) => {
+      // Ignore if user is typing in an input field or textarea
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+        return;
+      }
+
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        if (textInput.value.trim()) {
+          const canvas = canvasRef.current;
+          if (!canvas) return;
+          const rect = canvas.getBoundingClientRect();
+
+          if (textInput.editingId) {
+            // Update existing overlay with current toolbar settings
+            const existingOverlay = visibleOverlays.find(o => o.id === textInput.editingId);
+            if (existingOverlay && onUpdateOverlay) {
+              onUpdateOverlay(textInput.editingId, {
+                data: {
+                  ...existingOverlay.data,
+                  text: textInput.value,
+                  color: brushColor,
+                  size: brushSize * 6,
+                  font: textFont
+                }
+              });
+            }
+          } else {
+            // Create new overlay
+            onAddOverlay({
+              text: textInput.value,
+              x: textInput.x / rect.width,
+              y: textInput.y / rect.height,
+              color: brushColor,
+              size: brushSize * 6,
+              font: textFont,
+              offsetX: 0,
+              offsetY: 0
+            });
+          }
+        }
+        setTextInput({
+          show: false,
+          x: 0,
+          y: 0,
+          value: '',
+          editingId: null
+        });
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        setTextInput({
+          show: false,
+          x: 0,
+          y: 0,
+          value: '',
+          editingId: null
+        });
+      } else if (e.key === 'Backspace') {
+        e.preventDefault();
+        setTextInput(prev => ({ ...prev, value: prev.value.slice(0, -1) }));
+      } else if (e.key.length === 1) {
+        e.preventDefault();
+        setTextInput(prev => ({ ...prev, value: prev.value + e.key }));
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [textInput.show, textInput.value, textInput.editingId, brushColor, brushSize, textFont, onAddOverlay, onUpdateOverlay, visibleOverlays]);
 
   // Redraw visible overlays
   useEffect(() => {
@@ -48,6 +144,9 @@ function OverlayCanvas({
     ctx.clearRect(0, 0, rect.width, rect.height);
 
     visibleOverlays.forEach(overlay => {
+      // Skip rendering if this overlay is being edited
+      if (textInput.editingId === overlay.id) return;
+
       // Convert relative offsets to absolute
       const offsetX = (overlay.data.offsetX || 0) * rect.width;
       const offsetY = (overlay.data.offsetY || 0) * rect.height;
@@ -91,13 +190,27 @@ function OverlayCanvas({
       } else if (overlay.type === 'text' && overlay.data.text) {
         // Scale font size relative to canvas size
         const fontSize = (overlay.data.size || 24) * (rect.width / 800);
-        ctx.font = `${fontSize}px 'Syne', sans-serif`;
+        const fontFamily = overlay.data.font || 'Syne';
+        ctx.font = `${fontSize}px '${fontFamily}', sans-serif`;
+
+        // Add drop shadow
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
+        ctx.shadowBlur = 4;
+        ctx.shadowOffsetX = 2;
+        ctx.shadowOffsetY = 2;
+
         ctx.fillStyle = overlay.data.color;
 
         // Convert relative position to absolute
         const textX = (overlay.data.x || 0) * rect.width + offsetX;
         const textY = (overlay.data.y || 0) * rect.height + offsetY;
         ctx.fillText(overlay.data.text, textX, textY);
+
+        // Reset shadow
+        ctx.shadowColor = 'transparent';
+        ctx.shadowBlur = 0;
+        ctx.shadowOffsetX = 0;
+        ctx.shadowOffsetY = 0;
 
         // Draw selection box for active text
         if (isActive && showOutlines) {
@@ -115,7 +228,35 @@ function OverlayCanvas({
         }
       }
     });
-  }, [visibleOverlays, activeOverlayId, showOutlines]);
+
+    // Draw text being typed
+    if (textInput.show) {
+      // Use current toolbar values for both creating and editing
+      const fontSize = (brushSize * 6) * (rect.width / 800);
+      ctx.font = `${fontSize}px '${textFont}', sans-serif`;
+
+      // Add drop shadow
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
+      ctx.shadowBlur = 4;
+      ctx.shadowOffsetX = 2;
+      ctx.shadowOffsetY = 2;
+
+      ctx.fillStyle = brushColor;
+      ctx.fillText(textInput.value, textInput.x, textInput.y);
+
+      // Reset shadow for cursor
+      ctx.shadowColor = 'transparent';
+      ctx.shadowBlur = 0;
+      ctx.shadowOffsetX = 0;
+      ctx.shadowOffsetY = 0;
+
+      // Draw cursor
+      if (cursorVisible) {
+        const textWidth = ctx.measureText(textInput.value).width;
+        ctx.fillRect(textInput.x + textWidth, textInput.y - fontSize, 2, fontSize);
+      }
+    }
+  }, [visibleOverlays, activeOverlayId, showOutlines, textInput, brushColor, brushSize, textFont, cursorVisible]);
 
   const getDrawingBounds = (paths, offsetX, offsetY) => {
     const canvas = canvasRef.current;
@@ -165,7 +306,8 @@ function OverlayCanvas({
     if (overlay.type === 'text' && overlay.data.text) {
       const ctx = contextRef.current;
       const fontSize = (overlay.data.size || 24) * (rect.width / 800);
-      ctx.font = `${fontSize}px 'Syne', sans-serif`;
+      const fontFamily = overlay.data.font || 'Syne';
+      ctx.font = `${fontSize}px '${fontFamily}', sans-serif`;
       const metrics = ctx.measureText(overlay.data.text);
       const x = (overlay.data.x || 0) * rect.width + offsetX;
       const y = (overlay.data.y || 0) * rect.height + offsetY;
@@ -199,9 +341,41 @@ function OverlayCanvas({
       );
 
       if (clickedOverlay) {
-        onSelectOverlay(clickedOverlay.id);
-        setIsDragging(true);
-        setDragStart(coords);
+        // If clicking on a text overlay, enter edit mode
+        if (clickedOverlay.type === 'text' && clickedOverlay.data.text) {
+          const canvas = canvasRef.current;
+          if (!canvas) return;
+          const rect = canvas.getBoundingClientRect();
+
+          const offsetX = (clickedOverlay.data.offsetX || 0) * rect.width;
+          const offsetY = (clickedOverlay.data.offsetY || 0) * rect.height;
+          const textX = (clickedOverlay.data.x || 0) * rect.width + offsetX;
+          const textY = (clickedOverlay.data.y || 0) * rect.height + offsetY;
+
+          // Sync toolbar to match overlay's properties
+          if (clickedOverlay.data.color && setBrushColor) {
+            setBrushColor(clickedOverlay.data.color);
+          }
+          if (clickedOverlay.data.size && setBrushSize) {
+            setBrushSize(clickedOverlay.data.size / 6);
+          }
+          if (clickedOverlay.data.font && setTextFont) {
+            setTextFont(clickedOverlay.data.font);
+          }
+
+          setTextInput({
+            show: true,
+            x: textX,
+            y: textY,
+            value: clickedOverlay.data.text,
+            editingId: clickedOverlay.id
+          });
+          onSelectOverlay(clickedOverlay.id);
+        } else {
+          onSelectOverlay(clickedOverlay.id);
+          setIsDragging(true);
+          setDragStart(coords);
+        }
       } else {
         onSelectOverlay(null);
         // Toggle play/pause when clicking empty area with select tool
@@ -324,12 +498,13 @@ function OverlayCanvas({
         y: textInput.y / rect.height,
         color: brushColor,
         size: brushSize * 6,
+        font: textFont,
         offsetX: 0,
         offsetY: 0
       });
     }
     setTextInput({ show: false, x: 0, y: 0, value: '' });
-  }, [textInput, brushColor, brushSize, onAddOverlay]);
+  }, [textInput, brushColor, brushSize, textFont, onAddOverlay]);
 
   const getCursor = () => {
     if (isPlaying) return 'default';
@@ -357,42 +532,7 @@ function OverlayCanvas({
         onTouchMove={draw}
         onTouchEnd={stopDrawing}
       />
-      
-      {textInput.show && (
-        <div
-          className="text-input-overlay"
-          style={{
-            left: `${textInput.x}px`,
-            top: `${textInput.y}px`
-          }}
-          onMouseDown={(e) => e.stopPropagation()}
-        >
-          <input
-            type="text"
-            value={textInput.value}
-            onChange={(e) => {
-              setTextInput(prev => ({ ...prev, value: e.target.value }));
-            }}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault();
-                handleTextSubmit();
-              }
-              if (e.key === 'Escape') {
-                e.preventDefault();
-                setTextInput({ show: false, x: 0, y: 0, value: '' });
-              }
-            }}
-            autoFocus
-            placeholder="Type and press Enter"
-            style={{
-              color: brushColor,
-              caretColor: brushColor
-            }}
-          />
-        </div>
-      )}
-      
+
       {isPlaying && (
         <div className="playing-indicator">
           <span>Playing - pause to edit</span>

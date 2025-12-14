@@ -80,6 +80,34 @@
   box-shadow: 0 0 0 2px var(--bg-primary);
 }
 
+.font-buttons {
+  display: flex;
+  gap: 0.35rem;
+}
+
+.font-btn {
+  padding: 0.4rem 0.75rem;
+  background: var(--bg-tertiary);
+  border: 2px solid var(--border-color);
+  border-radius: 6px;
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: all 0.15s;
+  min-width: 50px;
+}
+
+.font-btn:hover {
+  border-color: var(--text-muted);
+  color: var(--text-primary);
+}
+
+.font-btn.active {
+  background: var(--accent-primary);
+  border-color: var(--accent-primary);
+  color: white;
+}
+
 .size-slider {
   width: 100px;
   height: 6px;

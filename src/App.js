@@ -19,6 +19,7 @@ function App() {
   const [tool, setTool] = useState('select'); // select, draw, text, erase
   const [brushColor, setBrushColor] = useState('#ff3366');
   const [brushSize, setBrushSize] = useState(4);
+  const [textFont, setTextFont] = useState('Syne');
   const [showShareModal, setShowShareModal] = useState(false);
   const [playerRef, setPlayerRef] = useState(null);
   const [isSharedView, setIsSharedView] = useState(false);
@@ -227,6 +228,8 @@ function App() {
                 setBrushColor={setBrushColor}
                 brushSize={brushSize}
                 setBrushSize={setBrushSize}
+                textFont={textFont}
+                setTextFont={setTextFont}
                 onShare={() => setShowShareModal(true)}
                 onNewVideo={() => {
                   setVideoLoaded(false);
@@ -264,6 +267,10 @@ function App() {
                   tool={tool}
                   brushColor={brushColor}
                   brushSize={brushSize}
+                  textFont={textFont}
+                  setBrushColor={setBrushColor}
+                  setBrushSize={setBrushSize}
+                  setTextFont={setTextFont}
                   visibleOverlays={getVisibleOverlays()}
                   onAddOverlay={addOverlay}
                   isPlaying={isPlaying}

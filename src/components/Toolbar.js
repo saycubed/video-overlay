@@ -10,6 +10,12 @@ const COLORS = [
   '#ffff00', // Yellow
 ];
 
+const FONTS = [
+  { name: 'Syne', label: 'Default' },
+  { name: 'Pacifico', label: 'Script' },
+  { name: 'Space Mono', label: 'Mono' },
+];
+
 function Toolbar({
   tool,
   setTool,
@@ -17,6 +23,8 @@ function Toolbar({
   setBrushColor,
   brushSize,
   setBrushSize,
+  textFont,
+  setTextFont,
   onShare,
   onNewVideo,
   hasOverlays
@@ -47,6 +55,23 @@ function Toolbar({
           >
             T
           </button>
+        </div>
+      </div>
+
+      <div className="toolbar-section">
+        <span className="toolbar-label">Font</span>
+        <div className="font-buttons">
+          {FONTS.map(font => (
+            <button
+              key={font.name}
+              className={`font-btn ${textFont === font.name ? 'active' : ''}`}
+              onClick={() => setTextFont(font.name)}
+              title={font.name}
+              style={{ fontFamily: font.name }}
+            >
+              {font.label}
+            </button>
+          ))}
         </div>
       </div>
 
