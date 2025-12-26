@@ -29,9 +29,20 @@ function OverlayCanvas({
     value: '',
     editingId: null
   });
+  const textInputRef = useRef(null);
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [cursorVisible, setCursorVisible] = useState(true);
+  const [drawingSession, setDrawingSession] = useState({
+    active: false,
+    paths: [],
+    startTime: null
+  });
+  const [pendingToolChange, setPendingToolChange] = useState(null);
+  const pendingPathsRef = useRef(null);
+  const sessionTimeoutRef = useRef(null);
+  const lastClickTimeRef = useRef(0);
+  const lastClickIdRef = useRef(null);
 
   // Initialize canvas
   useEffect(() => {
@@ -58,6 +69,13 @@ function OverlayCanvas({
     }, 500);
 
     return () => clearInterval(interval);
+  }, [textInput.show]);
+
+  // Focus text input when it appears (for mobile keyboard)
+  useEffect(() => {
+    if (textInput.show && textInputRef.current) {
+      textInputRef.current.focus();
+    }
   }, [textInput.show]);
 
   // Handle keyboard input for text
@@ -256,7 +274,41 @@ function OverlayCanvas({
         ctx.fillRect(textInput.x + textWidth, textInput.y - fontSize, 2, fontSize);
       }
     }
-  }, [visibleOverlays, activeOverlayId, showOutlines, textInput, brushColor, brushSize, textFont, cursorVisible]);
+
+    // Draw active drawing session paths with semi-transparent border
+    if (drawingSession.active && drawingSession.paths.length > 0) {
+      drawingSession.paths.forEach(path => {
+        if (path.points.length < 2) return;
+
+        ctx.beginPath();
+        ctx.strokeStyle = path.color;
+        ctx.lineWidth = (path.size || 4) * (rect.width / 800);
+
+        const firstPoint = {
+          x: path.points[0].x * rect.width,
+          y: path.points[0].y * rect.height
+        };
+        ctx.moveTo(firstPoint.x, firstPoint.y);
+
+        for (let i = 1; i < path.points.length; i++) {
+          const point = {
+            x: path.points[i].x * rect.width,
+            y: path.points[i].y * rect.height
+          };
+          ctx.lineTo(point.x, point.y);
+        }
+        ctx.stroke();
+      });
+
+      // Draw dashed border around the entire session
+      const bounds = getDrawingBounds(drawingSession.paths, 0, 0);
+      ctx.strokeStyle = '#00ffaa';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([5, 5]);
+      ctx.strokeRect(bounds.x - 5, bounds.y - 5, bounds.width + 10, bounds.height + 10);
+      ctx.setLineDash([]);
+    }
+  }, [visibleOverlays, activeOverlayId, showOutlines, textInput, brushColor, brushSize, textFont, cursorVisible, drawingSession]);
 
   const getDrawingBounds = (paths, offsetX, offsetY) => {
     const canvas = canvasRef.current;
@@ -326,7 +378,97 @@ function OverlayCanvas({
     return false;
   }, []);
 
+  // Drawing session management
+  const finalizeDrawingSession = useCallback(() => {
+    if (!drawingSession.active || drawingSession.paths.length === 0) {
+      setDrawingSession({ active: false, paths: [], startTime: null });
+      return;
+    }
+
+    // Save all paths as a single overlay
+    onAddOverlay({
+      paths: drawingSession.paths,
+      offsetX: 0,
+      offsetY: 0
+    });
+
+    setDrawingSession({ active: false, paths: [], startTime: null });
+    if (sessionTimeoutRef.current) {
+      clearTimeout(sessionTimeoutRef.current);
+      sessionTimeoutRef.current = null;
+    }
+  }, [drawingSession, onAddOverlay]);
+
+  const cancelDrawingSession = useCallback(() => {
+    setDrawingSession({ active: false, paths: [], startTime: null });
+    if (sessionTimeoutRef.current) {
+      clearTimeout(sessionTimeoutRef.current);
+      sessionTimeoutRef.current = null;
+    }
+  }, []);
+
+  const undoLastStroke = useCallback(() => {
+    if (drawingSession.paths.length > 0) {
+      setDrawingSession(prev => ({
+        ...prev,
+        paths: prev.paths.slice(0, -1)
+      }));
+    }
+  }, [drawingSession.paths.length]);
+
+  const acceptDrawingAndChangeTool = useCallback(() => {
+    // Use the stored paths from when the warning was triggered
+    const pathsToSave = pendingPathsRef.current;
+
+    if (pathsToSave && pathsToSave.length > 0) {
+      // Save the overlay first with explicit type
+      onAddOverlay({
+        type: 'drawing',
+        paths: pathsToSave,
+        offsetX: 0,
+        offsetY: 0
+      });
+
+      // Delay clearing the state to ensure overlay is added
+      setTimeout(() => {
+        setDrawingSession({ active: false, paths: [], startTime: null });
+        setPendingToolChange(null);
+        pendingPathsRef.current = null;
+      }, 0);
+    } else {
+      alert('No paths found - this should not happen!');
+      setPendingToolChange(null);
+    }
+  }, [onAddOverlay]);
+
+  const rejectDrawingAndChangeTool = useCallback(() => {
+    setDrawingSession({ active: false, paths: [], startTime: null });
+    setPendingToolChange(null);
+    pendingPathsRef.current = null;
+  }, []);
+
+  // Detect tool change when drawing session is active
+  useEffect(() => {
+    if (drawingSession.active && tool !== 'draw' && !pendingToolChange) {
+      // Store the current paths before showing warning
+      pendingPathsRef.current = [...drawingSession.paths];
+      setPendingToolChange(tool);
+    }
+  }, [tool, drawingSession.active, drawingSession.paths, pendingToolChange]);
+
+  // Auto-finalize when video starts playing
+  useEffect(() => {
+    if (drawingSession.active && isPlaying) {
+      finalizeDrawingSession();
+    }
+  }, [isPlaying, drawingSession.active, finalizeDrawingSession]);
+
   const startDrawing = useCallback((e) => {
+    // Prevent any tool action if there's a pending tool change warning
+    if (pendingToolChange) {
+      return;
+    }
+
     // Prevent default touch behavior (scrolling) on mobile
     if (e.touches) {
       e.preventDefault();
@@ -341,8 +483,17 @@ function OverlayCanvas({
       );
 
       if (clickedOverlay) {
-        // If clicking on a text overlay, enter edit mode
-        if (clickedOverlay.type === 'text' && clickedOverlay.data.text) {
+        // Detect double-click for text editing
+        const now = Date.now();
+        const isDoubleClick =
+          now - lastClickTimeRef.current < 300 &&
+          lastClickIdRef.current === clickedOverlay.id;
+
+        lastClickTimeRef.current = now;
+        lastClickIdRef.current = clickedOverlay.id;
+
+        // If double-clicking on a text overlay, enter edit mode
+        if (isDoubleClick && clickedOverlay.type === 'text' && clickedOverlay.data.text) {
           const canvas = canvasRef.current;
           if (!canvas) return;
           const rect = canvas.getBoundingClientRect();
@@ -372,6 +523,7 @@ function OverlayCanvas({
           });
           onSelectOverlay(clickedOverlay.id);
         } else {
+          // Single click: select and enable dragging for both text and drawing
           onSelectOverlay(clickedOverlay.id);
           setIsDragging(true);
           setDragStart(coords);
@@ -403,7 +555,7 @@ function OverlayCanvas({
       ctx.lineWidth = brushSize;
       ctx.moveTo(coords.x, coords.y);
     }
-  }, [isPlaying, tool, brushColor, brushSize, getCoordinates, visibleOverlays, checkOverlayHit, onSelectOverlay, onTogglePlayPause]);
+  }, [isPlaying, tool, brushColor, brushSize, getCoordinates, visibleOverlays, checkOverlayHit, onSelectOverlay, onTogglePlayPause, pendingToolChange]);
 
   const draw = useCallback((e) => {
     // Prevent default touch behavior (scrolling) on mobile
@@ -471,19 +623,22 @@ function OverlayCanvas({
       y: point.y / rect.height
     }));
 
-    onAddOverlay({
-      paths: [{
-        points: relativePath,
-        color: brushColor,
-        size: brushSize
-      }],
-      offsetX: 0,
-      offsetY: 0
-    });
+    const newPath = {
+      points: relativePath,
+      color: brushColor,
+      size: brushSize
+    };
+
+    // Always use drawing session mode (both mobile and desktop)
+    setDrawingSession(prev => ({
+      active: true,
+      paths: [...prev.paths, newPath],
+      startTime: prev.startTime || Date.now()
+    }));
 
     setIsDrawing(false);
     setCurrentPath([]);
-  }, [isDrawing, currentPath, brushColor, brushSize, onAddOverlay, isDragging]);
+  }, [isDrawing, currentPath, brushColor, brushSize, isDragging]);
 
   const handleTextSubmit = useCallback(() => {
     if (textInput.value.trim()) {
@@ -537,6 +692,117 @@ function OverlayCanvas({
         <div className="playing-indicator">
           <span>Playing - pause to edit</span>
         </div>
+      )}
+
+      {drawingSession.active && (
+        <div className="mobile-drawing-controls">
+          {pendingToolChange ? (
+            <>
+              <div className="session-indicator warning">
+                Finish drawing first?<br />
+                {drawingSession.paths.length} stroke{drawingSession.paths.length !== 1 ? 's' : ''}
+              </div>
+              <div className="control-buttons">
+                <button
+                  className="control-btn cancel-btn"
+                  onClick={rejectDrawingAndChangeTool}
+                  title="Discard drawing"
+                >
+                  Discard
+                </button>
+                <button
+                  className="control-btn done-btn"
+                  onClick={acceptDrawingAndChangeTool}
+                  title="Accept drawing"
+                >
+                  Accept
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="session-indicator">
+                Drawing... {drawingSession.paths.length} stroke{drawingSession.paths.length !== 1 ? 's' : ''}
+              </div>
+              <div className="control-buttons">
+                <button
+                  className="control-btn undo-btn"
+                  onClick={undoLastStroke}
+                  disabled={drawingSession.paths.length === 0}
+                  title="Undo last stroke"
+                >
+                  ↶
+                </button>
+                <button
+                  className="control-btn cancel-btn"
+                  onClick={cancelDrawingSession}
+                  title="Cancel drawing"
+                >
+                  ✕
+                </button>
+                <button
+                  className="control-btn done-btn"
+                  onClick={finalizeDrawingSession}
+                  title="Finish drawing"
+                >
+                  ✓
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {textInput.show && (
+        <input
+          ref={textInputRef}
+          type="text"
+          value={textInput.value}
+          onChange={(e) => setTextInput(prev => ({ ...prev, value: e.target.value }))}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              if (textInput.value.trim()) {
+                const canvas = canvasRef.current;
+                if (!canvas) return;
+                const rect = canvas.getBoundingClientRect();
+
+                if (textInput.editingId) {
+                  const existingOverlay = visibleOverlays.find(o => o.id === textInput.editingId);
+                  if (existingOverlay && onUpdateOverlay) {
+                    onUpdateOverlay(textInput.editingId, {
+                      data: {
+                        ...existingOverlay.data,
+                        text: textInput.value,
+                        color: brushColor,
+                        size: brushSize * 6,
+                        font: textFont
+                      }
+                    });
+                  }
+                } else {
+                  onAddOverlay({
+                    text: textInput.value,
+                    x: textInput.x / rect.width,
+                    y: textInput.y / rect.height,
+                    color: brushColor,
+                    size: brushSize * 6,
+                    font: textFont,
+                    offsetX: 0,
+                    offsetY: 0
+                  });
+                }
+              }
+              setTextInput({ show: false, x: 0, y: 0, value: '', editingId: null });
+            } else if (e.key === 'Escape') {
+              e.preventDefault();
+              setTextInput({ show: false, x: 0, y: 0, value: '', editingId: null });
+            }
+          }}
+          className="mobile-text-input"
+          placeholder="Type text and press Enter"
+          autoFocus
+        />
       )}
     </div>
   );

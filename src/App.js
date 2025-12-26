@@ -120,16 +120,19 @@ function App() {
   }, []);
 
   const addOverlay = useCallback((overlayData) => {
+    // Determine type from data structure, not current tool
+    const overlayType = overlayData.type || (overlayData.text ? 'text' : 'drawing');
+
     const newOverlay = {
       id: Date.now().toString(),
       startTime: currentTime,
       endTime: Math.min(currentTime + 5, duration),
       data: overlayData,
-      type: tool === 'text' ? 'text' : 'drawing'
+      type: overlayType
     };
     setOverlays(prev => [...prev, newOverlay]);
     setActiveOverlayId(newOverlay.id);
-  }, [currentTime, duration, tool]);
+  }, [currentTime, duration]);
 
   const updateOverlay = useCallback((id, updates) => {
     setOverlays(prev => prev.map(o => 

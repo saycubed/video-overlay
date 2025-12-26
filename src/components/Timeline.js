@@ -26,18 +26,27 @@ function Timeline({
 
   const handleOverlayDrag = useCallback((e, overlay, edge) => {
     e.stopPropagation();
-    draggingRef.current = { overlay, edge };
-    
+    e.preventDefault();
+
+    // Capture the pointer for better drag tracking
+    if (e.target.setPointerCapture) {
+      e.target.setPointerCapture(e.pointerId);
+    }
+
+    draggingRef.current = { overlay, edge, pointerId: e.pointerId };
+
     const handleMove = (moveEvent) => {
       if (!timelineRef.current || !draggingRef.current) return;
-      
+      // Only handle events from the same pointer
+      if (moveEvent.pointerId !== draggingRef.current.pointerId) return;
+
       const rect = timelineRef.current.getBoundingClientRect();
       const x = moveEvent.clientX - rect.left;
       const time = (x / rect.width) * duration;
       const clampedTime = Math.max(0, Math.min(duration, time));
-      
+
       const { overlay: dragOverlay, edge: dragEdge } = draggingRef.current;
-      
+
       if (dragEdge === 'start') {
         if (clampedTime < dragOverlay.endTime - 0.5) {
           onUpdateOverlay(dragOverlay.id, { startTime: clampedTime });
@@ -56,15 +65,26 @@ function Timeline({
         });
       }
     };
-    
-    const handleUp = () => {
+
+    const handleUp = (upEvent) => {
+      if (!draggingRef.current) return;
+      // Only handle events from the same pointer
+      if (upEvent.pointerId !== draggingRef.current.pointerId) return;
+
+      // Release pointer capture
+      if (upEvent.target.releasePointerCapture) {
+        upEvent.target.releasePointerCapture(upEvent.pointerId);
+      }
+
       draggingRef.current = null;
-      document.removeEventListener('mousemove', handleMove);
-      document.removeEventListener('mouseup', handleUp);
+      document.removeEventListener('pointermove', handleMove);
+      document.removeEventListener('pointerup', handleUp);
+      document.removeEventListener('pointercancel', handleUp);
     };
-    
-    document.addEventListener('mousemove', handleMove);
-    document.addEventListener('mouseup', handleUp);
+
+    document.addEventListener('pointermove', handleMove);
+    document.addEventListener('pointerup', handleUp);
+    document.addEventListener('pointercancel', handleUp);
   }, [duration, onUpdateOverlay]);
 
   const formatTime = (seconds) => {
@@ -127,11 +147,11 @@ function Timeline({
             >
               <div
                 className="overlay-handle handle-start"
-                onMouseDown={(e) => handleOverlayDrag(e, overlay, 'start')}
+                onPointerDown={(e) => handleOverlayDrag(e, overlay, 'start')}
               />
               <div
                 className="overlay-content"
-                onMouseDown={(e) => handleOverlayDrag(e, overlay, 'middle')}
+                onPointerDown={(e) => handleOverlayDrag(e, overlay, 'middle')}
               >
                 {textPreview ? (
                   <span className="overlay-text-preview" title={textPreview}>
@@ -145,7 +165,7 @@ function Timeline({
               </div>
               <div
                 className="overlay-handle handle-end"
-                onMouseDown={(e) => handleOverlayDrag(e, overlay, 'end')}
+                onPointerDown={(e) => handleOverlayDrag(e, overlay, 'end')}
               />
             </div>
           );
