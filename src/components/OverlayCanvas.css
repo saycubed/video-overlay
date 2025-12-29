@@ -184,4 +184,53 @@
   opacity: 0.7;
 }
 
+/* Zoom controls */
+.zoom-controls {
+  position: fixed;
+  top: 20px;
+  left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 1000;
+  pointer-events: auto;
+}
+
+.zoom-indicator {
+  background: rgba(0, 0, 0, 0.8);
+  color: #00ffaa;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-align: center;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  min-width: 60px;
+}
+
+.reset-zoom-btn {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: none;
+  background: linear-gradient(135deg, #666, #444);
+  color: #fff;
+  font-size: 1.5rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.reset-zoom-btn:hover {
+  background: linear-gradient(135deg, #888, #666);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+}
+
+.reset-zoom-btn:active {
+  transform: scale(0.95);
+}
+
 /* Note: Drawing controls are shown on both mobile and desktop */

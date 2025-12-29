@@ -334,17 +334,16 @@ function OverlayCanvas({
     const canvas = canvasRef.current;
     const rect = canvas.getBoundingClientRect();
 
+    let x, y;
     if (e.touches) {
-      return {
-        x: e.touches[0].clientX - rect.left,
-        y: e.touches[0].clientY - rect.top
-      };
+      x = e.touches[0].clientX - rect.left;
+      y = e.touches[0].clientY - rect.top;
+    } else {
+      x = e.clientX - rect.left;
+      y = e.clientY - rect.top;
     }
 
-    return {
-      x: e.clientX - rect.left,
-      y: e.clientY - rect.top
-    };
+    return { x, y };
   }, []);
 
   const checkOverlayHit = useCallback((coords, overlay) => {

@@ -25,6 +25,29 @@ function App() {
   const [isSharedView, setIsSharedView] = useState(false);
   const [showEditControls, setShowEditControls] = useState(false);
   const [copiedOverlay, setCopiedOverlay] = useState(null);
+  const [isAnimatingShare, setIsAnimatingShare] = useState(false);
+  const [shareAnimationPhase, setShareAnimationPhase] = useState('');
+
+  // Share animation sequence
+  useEffect(() => {
+    if (!isAnimatingShare) return;
+
+    const timers = [
+      setTimeout(() => setShareAnimationPhase('center-collapse'), 0),
+      setTimeout(() => setShareAnimationPhase('spiral-draw'), 2000),
+      setTimeout(() => {
+        setIsAnimatingShare(false);
+        setShareAnimationPhase('');
+        setShowShareModal(true);
+      }, 4665)
+    ];
+
+    return () => timers.forEach(timer => clearTimeout(timer));
+  }, [isAnimatingShare]);
+
+  const handleShare = useCallback(() => {
+    setIsAnimatingShare(true);
+  }, []);
 
   // Load from URL on mount
   useEffect(() => {
@@ -223,28 +246,33 @@ function App() {
               />
             )}
 
-            {(!isSharedView || showEditControls) && (
-              <Toolbar
-                tool={tool}
-                setTool={setTool}
-                brushColor={brushColor}
-                setBrushColor={setBrushColor}
-                brushSize={brushSize}
-                setBrushSize={setBrushSize}
-                textFont={textFont}
-                setTextFont={setTextFont}
-                onShare={() => setShowShareModal(true)}
-                onNewVideo={() => {
-                  setVideoLoaded(false);
-                  setVideoUrl('');
-                  setOverlays([]);
-                  window.history.replaceState({}, '', window.location.pathname);
-                }}
-                hasOverlays={overlays.length > 0}
-              />
-            )}
-            
-            <div className="video-area">
+            <div
+              className={isAnimatingShare ? `collapse-wrapper ${shareAnimationPhase}` : ''}
+              style={shareAnimationPhase === 'spiral-draw' || showShareModal ? { display: 'none' } : {}}
+            >
+              {(!isSharedView || showEditControls) && (
+                <Toolbar
+                  style={showShareModal ? { display: 'none' } : {}}
+                  tool={tool}
+                  setTool={setTool}
+                  brushColor={brushColor}
+                  setBrushColor={setBrushColor}
+                  brushSize={brushSize}
+                  setBrushSize={setBrushSize}
+                  textFont={textFont}
+                  setTextFont={setTextFont}
+                  onShare={handleShare}
+                  onNewVideo={() => {
+                    setVideoLoaded(false);
+                    setVideoUrl('');
+                    setOverlays([]);
+                    window.history.replaceState({}, '', window.location.pathname);
+                  }}
+                  hasOverlays={overlays.length > 0}
+                />
+              )}
+
+              <div className="video-area">
               <div
                 className="video-wrapper"
                 onClick={(e) => {
@@ -298,17 +326,27 @@ function App() {
               </div>
             </div>
 
-            {(!isSharedView || showEditControls) && (
-              <Timeline
-                duration={duration}
-                currentTime={currentTime}
-                overlays={overlays}
-                activeOverlayId={activeOverlayId}
-                onSeek={seekTo}
-                onSelectOverlay={setActiveOverlayId}
-                onUpdateOverlay={updateOverlay}
-                onDeleteOverlay={deleteOverlay}
-              />
+              {(!isSharedView || showEditControls) && (
+                <Timeline
+                  style={showShareModal ? { display: 'none' } : {}}
+                  duration={duration}
+                  currentTime={currentTime}
+                  overlays={overlays}
+                  activeOverlayId={activeOverlayId}
+                  onSeek={seekTo}
+                  onSelectOverlay={setActiveOverlayId}
+                  onUpdateOverlay={updateOverlay}
+                  onDeleteOverlay={deleteOverlay}
+                />
+              )}
+            </div>
+
+            {/* Share animation elements */}
+            {isAnimatingShare && shareAnimationPhase === 'spiral-draw' && (
+              <div className="share-animation-container">
+                {/* White dot with trailing effect */}
+                <div className="spiral-dot"></div>
+              </div>
             )}
           </div>
         )}

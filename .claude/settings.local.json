@@ -8,7 +8,11 @@
       "Bash(git remote set-url:*)",
       "WebFetch(domain:code.claude.com)",
       "WebSearch",
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Bash(dir:*)",
+      "Bash(npm start)",
+      "Bash(git restore:*)",
+      "Bash(taskkill:*)"
     ],
     "deny": [],
     "ask": []

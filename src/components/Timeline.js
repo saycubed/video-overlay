@@ -9,7 +9,9 @@ function Timeline({
   onSeek,
   onSelectOverlay,
   onUpdateOverlay,
-  onDeleteOverlay
+  onDeleteOverlay,
+  className = '',
+  style = {}
 }) {
   const timelineRef = useRef(null);
   const draggingRef = useRef(null);
@@ -97,7 +99,7 @@ function Timeline({
   const progressPercent = duration ? (currentTime / duration) * 100 : 0;
 
   return (
-    <div className="timeline-container">
+    <div className={`timeline-container ${className}`} style={style}>
       <div className="timeline-header">
         <h3>Timeline</h3>
         <span className="overlay-count">{overlays.length} overlay{overlays.length !== 1 ? 's' : ''}</span>

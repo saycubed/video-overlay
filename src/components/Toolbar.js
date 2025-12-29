@@ -27,10 +27,12 @@ function Toolbar({
   setTextFont,
   onShare,
   onNewVideo,
-  hasOverlays
+  hasOverlays,
+  className = '',
+  style = {}
 }) {
   return (
-    <div className="toolbar">
+    <div className={`toolbar ${className}`} style={style}>
       <div className="toolbar-section">
         <span className="toolbar-label">Tools</span>
         <div className="tool-buttons">
