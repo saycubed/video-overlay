@@ -604,12 +604,6 @@ function OverlayCanvas({
     if (tool === 'draw') {
       setIsDrawing(true);
       setCurrentPath([coords]);
-
-      const ctx = contextRef.current;
-      ctx.beginPath();
-      ctx.strokeStyle = brushColor;
-      ctx.lineWidth = brushSize;
-      ctx.moveTo(coords.x, coords.y);
     }
   }, [isPlaying, tool, brushColor, brushSize, getCoordinates, visibleOverlays, checkOverlayHit, onSelectOverlay, onTogglePlayPause, setBrushColor, setBrushSize, setTextFont]);
 
@@ -649,10 +643,6 @@ function OverlayCanvas({
     if (!isDrawing || tool !== 'draw') return;
 
     setCurrentPath(prev => [...prev, coords]);
-
-    const ctx = contextRef.current;
-    ctx.lineTo(coords.x, coords.y);
-    ctx.stroke();
   }, [isDrawing, tool, getCoordinates, isDragging, activeOverlayId, dragStart, visibleOverlays, onUpdateOverlay]);
 
   const stopDrawing = useCallback(() => {
