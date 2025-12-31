@@ -96,6 +96,64 @@ function Timeline({
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
+  const analyzeOverlayColors = (overlay) => {
+    // Text overlays: return single color
+    if (overlay.type === 'text') {
+      return [{ color: overlay.data?.color || '#00ffaa', percentage: 100 }];
+    }
+
+    // Drawing overlays: analyze paths
+    if (overlay.type === 'drawing' && overlay.data?.paths) {
+      const paths = overlay.data.paths;
+
+      // Count occurrences of each color
+      const colorCounts = {};
+      paths.forEach(path => {
+        const color = path.color || '#00ffaa';
+        colorCounts[color] = (colorCounts[color] || 0) + 1;
+      });
+
+      // Calculate percentages
+      const totalPaths = paths.length;
+      const colorDistribution = Object.entries(colorCounts).map(([color, count]) => ({
+        color,
+        percentage: (count / totalPaths) * 100
+      }));
+
+      // Sort by percentage (largest first) for consistent rendering
+      return colorDistribution.sort((a, b) => b.percentage - a.percentage);
+    }
+
+    // Fallback
+    return [{ color: '#00ffaa', percentage: 100 }];
+  };
+
+  const generateColorBlockStyle = (colorDistribution) => {
+    // Single color: solid background
+    if (colorDistribution.length === 1) {
+      return { backgroundColor: colorDistribution[0].color };
+    }
+
+    // Multiple colors: horizontal layers with hard stops (top to bottom)
+    let gradientStops = [];
+    let cumulativePercent = 0;
+
+    colorDistribution.forEach((item) => {
+      const startPercent = cumulativePercent;
+      const endPercent = cumulativePercent + item.percentage;
+
+      // Hard stops create distinct color layers
+      gradientStops.push(`${item.color} ${startPercent}%`);
+      gradientStops.push(`${item.color} ${endPercent}%`);
+
+      cumulativePercent = endPercent;
+    });
+
+    return {
+      background: `linear-gradient(to bottom, ${gradientStops.join(', ')})`
+    };
+  };
+
   const progressPercent = duration ? (currentTime / duration) * 100 : 0;
 
   return (
@@ -124,8 +182,9 @@ function Timeline({
           const left = (overlay.startTime / duration) * 100;
           const width = ((overlay.endTime - overlay.startTime) / duration) * 100;
 
-          // Get the color from the overlay data
-          const overlayColor = overlay.data?.color || '#00ffaa';
+          // Analyze colors used in overlay
+          const colorDistribution = analyzeOverlayColors(overlay);
+          const colorStyle = generateColorBlockStyle(colorDistribution);
 
           // Get text preview for text overlays
           const textPreview = overlay.type === 'text' && overlay.data?.text
@@ -139,7 +198,7 @@ function Timeline({
               style={{
                 left: `${left}%`,
                 width: `${width}%`,
-                backgroundColor: overlayColor,
+                ...colorStyle,
                 zIndex: activeOverlayId === overlay.id ? 5 : 1
               }}
               onClick={(e) => {
