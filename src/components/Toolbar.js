@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import './Toolbar.css';
 
 const COLORS = [
@@ -8,6 +8,7 @@ const COLORS = [
   '#3366ff', // Blue
   '#ffffff', // White
   '#ffff00', // Yellow
+  '#000000', // Black
 ];
 
 const FONTS = [
@@ -29,12 +30,20 @@ function Toolbar({
   onNewVideo,
   hasOverlays,
   className = '',
-  style = {}
+  style = {},
+  textInputState,
+  onFinalizeText,
+  drawingSessionState,
+  onFinalizeDrawing,
+  onCancelDrawing,
+  onUndoStroke
 }) {
+  const [showFontDropdown, setShowFontDropdown] = useState(false);
+  const [showColorDropdown, setShowColorDropdown] = useState(false);
+
   return (
     <div className={`toolbar ${className}`} style={style}>
       <div className="toolbar-section">
-        <span className="toolbar-label">Tools</span>
         <div className="tool-buttons">
           <button
             className={`tool-btn ${tool === 'select' ? 'active' : ''}`}
@@ -50,50 +59,71 @@ function Toolbar({
           >
             ✎
           </button>
-          <button
-            className={`tool-btn ${tool === 'text' ? 'active' : ''}`}
-            onClick={() => setTool('text')}
-            title="Text"
-          >
-            T
-          </button>
-        </div>
-      </div>
-
-      <div className="toolbar-section">
-        <span className="toolbar-label">Font</span>
-        <div className="font-buttons">
-          {FONTS.map(font => (
+          <div className="text-tool-wrapper">
             <button
-              key={font.name}
-              className={`font-btn ${textFont === font.name ? 'active' : ''}`}
-              onClick={() => setTextFont(font.name)}
-              title={font.name}
-              style={{ fontFamily: font.name }}
+              className={`tool-btn ${tool === 'text' ? 'active' : ''}`}
+              onClick={() => {
+                setTool('text');
+                setShowFontDropdown(!showFontDropdown);
+              }}
+              title="Text"
             >
-              {font.label}
+              T
             </button>
-          ))}
+            {tool === 'text' && showFontDropdown && (
+              <div className="font-dropdown-menu">
+                {FONTS.map(font => (
+                  <button
+                    key={font.name}
+                    className={`font-option ${textFont === font.name ? 'active' : ''}`}
+                    onClick={() => {
+                      setTextFont(font.name);
+                      setShowFontDropdown(false);
+                    }}
+                    style={{ fontFamily: font.name }}
+                  >
+                    {font.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
       <div className="toolbar-section">
-        <span className="toolbar-label">Color</span>
-        <div className="color-buttons">
-          {COLORS.map(color => (
-            <button
-              key={color}
-              className={`color-btn ${brushColor === color ? 'active' : ''}`}
-              style={{ background: color }}
-              onClick={() => setBrushColor(color)}
-              title={color}
-            />
-          ))}
+        <div className="color-picker-wrapper">
+          <button
+            className="rainbow-wheel-btn"
+            onClick={() => setShowColorDropdown(!showColorDropdown)}
+            title="Color picker"
+            style={{
+              borderColor: brushColor,
+              boxShadow: brushColor === '#000000' ? '0 0 0 1px white' : 'none'
+            }}
+          >
+            <div className="rainbow-wheel"></div>
+          </button>
+          {showColorDropdown && (
+            <div className="color-dropdown-menu">
+              {COLORS.map(color => (
+                <button
+                  key={color}
+                  className={`color-option ${brushColor === color ? 'active' : ''} ${color === '#000000' ? 'black-color' : ''}`}
+                  style={{ background: color }}
+                  onClick={() => {
+                    setBrushColor(color);
+                    setShowColorDropdown(false);
+                  }}
+                  title={color}
+                />
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
       <div className="toolbar-section">
-        <span className="toolbar-label">Size</span>
         <input
           type="range"
           min="1"
@@ -105,8 +135,53 @@ function Toolbar({
         <span className="size-value">{brushSize}px</span>
       </div>
 
+      {textInputState && textInputState.show && (
+        <div className="toolbar-section toolbar-finalize-inline">
+          <span className="warning-icon">⚠</span>
+          <span className="warning-text">Finalize text</span>
+          <button
+            className="finalize-btn-inline"
+            onClick={onFinalizeText}
+            title="Finalize text (saves the text to timeline)"
+          >
+            Done
+          </button>
+        </div>
+      )}
+
+      {drawingSessionState && drawingSessionState.active && drawingSessionState.paths && drawingSessionState.paths.length > 0 && (
+        <div className="toolbar-section toolbar-drawing">
+          <span className="warning-icon">⚠</span>
+          <span className="warning-text">
+            {drawingSessionState.paths.length} stroke{drawingSessionState.paths.length !== 1 ? 's' : ''}
+          </span>
+          <button
+            className="drawing-btn undo-btn"
+            onClick={onUndoStroke}
+            disabled={drawingSessionState.paths.length === 0}
+            title="Undo last stroke"
+          >
+            ↶
+          </button>
+          <button
+            className="drawing-btn cancel-btn"
+            onClick={onCancelDrawing}
+            title="Cancel drawing"
+          >
+            ✕
+          </button>
+          <button
+            className="drawing-btn done-btn"
+            onClick={onFinalizeDrawing}
+            title="Finish drawing"
+          >
+            ✓
+          </button>
+        </div>
+      )}
+
       <div className="toolbar-section toolbar-actions">
-        <button 
+        <button
           className="action-btn share-btn"
           onClick={onShare}
           disabled={!hasOverlays}
@@ -114,11 +189,11 @@ function Toolbar({
         >
           Share
         </button>
-        <button 
+        <button
           className="action-btn new-btn"
           onClick={onNewVideo}
         >
-          New Video
+          New
         </button>
       </div>
     </div>

@@ -16,7 +16,7 @@ function SharedViewControls({ showEditControls, onToggleEdit, onNewVideo }) {
         onClick={onNewVideo}
         title="Create a new video"
       >
-        New Video
+        New
       </button>
     </div>
   );

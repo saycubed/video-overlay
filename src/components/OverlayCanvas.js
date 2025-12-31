@@ -16,7 +16,13 @@ function OverlayCanvas({
   onUpdateOverlay,
   onSelectOverlay,
   onTogglePlayPause,
-  showOutlines = true
+  showOutlines = true,
+  onTextInputChange,
+  onFinalizeTextRef,
+  onDrawingSessionChange,
+  onFinalizeDrawingRef,
+  onCancelDrawingRef,
+  onUndoStrokeRef
 }) {
   const canvasRef = useRef(null);
   const contextRef = useRef(null);
@@ -38,8 +44,6 @@ function OverlayCanvas({
     paths: [],
     startTime: null
   });
-  const [pendingToolChange, setPendingToolChange] = useState(null);
-  const pendingPathsRef = useRef(null);
   const sessionTimeoutRef = useRef(null);
   const lastClickTimeRef = useRef(0);
   const lastClickIdRef = useRef(null);
@@ -74,9 +78,147 @@ function OverlayCanvas({
   // Focus text input when it appears (for mobile keyboard)
   useEffect(() => {
     if (textInput.show && textInputRef.current) {
-      textInputRef.current.focus();
+      // Lock body scroll when typing
+      document.body.style.overflow = 'hidden';
+      document.body.style.position = 'fixed';
+      document.body.style.width = '100%';
+      document.body.style.height = '100%';
+
+      // Use setTimeout to ensure the textarea is fully mounted and visible
+      const focusTimeout = setTimeout(() => {
+        if (textInputRef.current) {
+          textInputRef.current.focus({ preventScroll: true });
+          // Force focus on mobile
+          textInputRef.current.click();
+        }
+      }, 100);
+
+      return () => {
+        clearTimeout(focusTimeout);
+        // Unlock body scroll when done
+        document.body.style.overflow = '';
+        document.body.style.position = '';
+        document.body.style.width = '';
+        document.body.style.height = '';
+      };
     }
   }, [textInput.show]);
+
+  // Finalize text function
+  const finalizeText = useCallback(() => {
+    if (textInput.value.trim()) {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      const rect = canvas.getBoundingClientRect();
+
+      if (textInput.editingId) {
+        // Update existing overlay with current toolbar settings
+        const existingOverlay = visibleOverlays.find(o => o.id === textInput.editingId);
+        if (existingOverlay && onUpdateOverlay) {
+          onUpdateOverlay(textInput.editingId, {
+            data: {
+              ...existingOverlay.data,
+              text: textInput.value,
+              color: brushColor,
+              size: brushSize * 6,
+              font: textFont
+            }
+          });
+        }
+      } else {
+        // Create new overlay
+        onAddOverlay({
+          text: textInput.value,
+          x: textInput.x / rect.width,
+          y: textInput.y / rect.height,
+          color: brushColor,
+          size: brushSize * 6,
+          font: textFont,
+          offsetX: 0,
+          offsetY: 0
+        });
+      }
+    }
+    setTextInput({
+      show: false,
+      x: 0,
+      y: 0,
+      value: '',
+      editingId: null
+    });
+  }, [textInput, brushColor, brushSize, textFont, onAddOverlay, onUpdateOverlay, visibleOverlays]);
+
+  // Drawing session management functions
+  const finalizeDrawingSession = useCallback(() => {
+    if (!drawingSession.active || drawingSession.paths.length === 0) {
+      setDrawingSession({ active: false, paths: [], startTime: null });
+      return;
+    }
+
+    // Save all paths as a single overlay
+    onAddOverlay({
+      paths: drawingSession.paths,
+      offsetX: 0,
+      offsetY: 0
+    });
+
+    setDrawingSession({ active: false, paths: [], startTime: null });
+    if (sessionTimeoutRef.current) {
+      clearTimeout(sessionTimeoutRef.current);
+      sessionTimeoutRef.current = null;
+    }
+  }, [drawingSession, onAddOverlay]);
+
+  const cancelDrawingSession = useCallback(() => {
+    setDrawingSession({ active: false, paths: [], startTime: null });
+    if (sessionTimeoutRef.current) {
+      clearTimeout(sessionTimeoutRef.current);
+      sessionTimeoutRef.current = null;
+    }
+  }, []);
+
+  const undoLastStroke = useCallback(() => {
+    if (drawingSession.paths.length > 0) {
+      setDrawingSession(prev => ({
+        ...prev,
+        paths: prev.paths.slice(0, -1)
+      }));
+    }
+  }, [drawingSession.paths.length]);
+
+  // Notify parent of text input state changes
+  useEffect(() => {
+    if (onTextInputChange) {
+      onTextInputChange(textInput);
+    }
+  }, [textInput, onTextInputChange]);
+
+  // Expose finalize function to parent
+  useEffect(() => {
+    if (onFinalizeTextRef) {
+      onFinalizeTextRef.current = finalizeText;
+    }
+  }, [finalizeText, onFinalizeTextRef]);
+
+  // Notify parent of drawing session state changes
+  useEffect(() => {
+    if (onDrawingSessionChange) {
+      onDrawingSessionChange(drawingSession);
+    }
+  }, [drawingSession, onDrawingSessionChange]);
+
+  // Expose drawing control functions to parent
+  useEffect(() => {
+    if (onFinalizeDrawingRef) {
+      onFinalizeDrawingRef.current = finalizeDrawingSession;
+    }
+    if (onCancelDrawingRef) {
+      onCancelDrawingRef.current = cancelDrawingSession;
+    }
+    if (onUndoStrokeRef) {
+      onUndoStrokeRef.current = undoLastStroke;
+    }
+  }, [finalizeDrawingSession, cancelDrawingSession, undoLastStroke, onFinalizeDrawingRef, onCancelDrawingRef, onUndoStrokeRef]);
 
   // Handle keyboard input for text
   useEffect(() => {
@@ -90,46 +232,8 @@ function OverlayCanvas({
 
       if (e.key === 'Enter') {
         e.preventDefault();
-        if (textInput.value.trim()) {
-          const canvas = canvasRef.current;
-          if (!canvas) return;
-          const rect = canvas.getBoundingClientRect();
-
-          if (textInput.editingId) {
-            // Update existing overlay with current toolbar settings
-            const existingOverlay = visibleOverlays.find(o => o.id === textInput.editingId);
-            if (existingOverlay && onUpdateOverlay) {
-              onUpdateOverlay(textInput.editingId, {
-                data: {
-                  ...existingOverlay.data,
-                  text: textInput.value,
-                  color: brushColor,
-                  size: brushSize * 6,
-                  font: textFont
-                }
-              });
-            }
-          } else {
-            // Create new overlay
-            onAddOverlay({
-              text: textInput.value,
-              x: textInput.x / rect.width,
-              y: textInput.y / rect.height,
-              color: brushColor,
-              size: brushSize * 6,
-              font: textFont,
-              offsetX: 0,
-              offsetY: 0
-            });
-          }
-        }
-        setTextInput({
-          show: false,
-          x: 0,
-          y: 0,
-          value: '',
-          editingId: null
-        });
+        // Add newline instead of finalizing
+        setTextInput(prev => ({ ...prev, value: prev.value + '\n' }));
       } else if (e.key === 'Escape') {
         e.preventDefault();
         setTextInput({
@@ -222,7 +326,13 @@ function OverlayCanvas({
         // Convert relative position to absolute
         const textX = (overlay.data.x || 0) * rect.width + offsetX;
         const textY = (overlay.data.y || 0) * rect.height + offsetY;
-        ctx.fillText(overlay.data.text, textX, textY);
+
+        // Support multi-line text
+        const lines = overlay.data.text.split('\n');
+        const lineHeight = fontSize * 1.2;
+        lines.forEach((line, index) => {
+          ctx.fillText(line, textX, textY + (index * lineHeight));
+        });
 
         // Reset shadow
         ctx.shadowColor = 'transparent';
@@ -232,15 +342,16 @@ function OverlayCanvas({
 
         // Draw selection box for active text
         if (isActive && showOutlines) {
-          const metrics = ctx.measureText(overlay.data.text);
+          const maxWidth = Math.max(...lines.map(line => ctx.measureText(line).width));
+          const totalHeight = lines.length * lineHeight;
           ctx.strokeStyle = '#ff3366';
           ctx.lineWidth = 2;
           ctx.setLineDash([5, 5]);
           ctx.strokeRect(
             textX - 5,
             textY - fontSize - 5,
-            metrics.width + 10,
-            fontSize + 10
+            maxWidth + 10,
+            totalHeight + 10
           );
           ctx.setLineDash([]);
         }
@@ -260,7 +371,13 @@ function OverlayCanvas({
       ctx.shadowOffsetY = 2;
 
       ctx.fillStyle = brushColor;
-      ctx.fillText(textInput.value, textInput.x, textInput.y);
+
+      // Support multi-line text in preview
+      const lines = textInput.value.split('\n');
+      const lineHeight = fontSize * 1.2;
+      lines.forEach((line, index) => {
+        ctx.fillText(line, textInput.x, textInput.y + (index * lineHeight));
+      });
 
       // Reset shadow for cursor
       ctx.shadowColor = 'transparent';
@@ -268,11 +385,26 @@ function OverlayCanvas({
       ctx.shadowOffsetX = 0;
       ctx.shadowOffsetY = 0;
 
-      // Draw cursor
+      // Draw cursor at end of last line
       if (cursorVisible) {
-        const textWidth = ctx.measureText(textInput.value).width;
-        ctx.fillRect(textInput.x + textWidth, textInput.y - fontSize, 2, fontSize);
+        const lastLine = lines[lines.length - 1];
+        const textWidth = ctx.measureText(lastLine).width;
+        const cursorY = textInput.y + ((lines.length - 1) * lineHeight);
+        ctx.fillRect(textInput.x + textWidth, cursorY - fontSize, 2, fontSize);
       }
+    }
+
+    // Draw current path being drawn (live preview)
+    if (isDrawing && currentPath.length > 1) {
+      ctx.beginPath();
+      ctx.strokeStyle = brushColor;
+      ctx.lineWidth = (brushSize || 4) * (rect.width / 800);
+
+      ctx.moveTo(currentPath[0].x, currentPath[0].y);
+      for (let i = 1; i < currentPath.length; i++) {
+        ctx.lineTo(currentPath[i].x, currentPath[i].y);
+      }
+      ctx.stroke();
     }
 
     // Draw active drawing session paths with semi-transparent border
@@ -308,7 +440,7 @@ function OverlayCanvas({
       ctx.strokeRect(bounds.x - 5, bounds.y - 5, bounds.width + 10, bounds.height + 10);
       ctx.setLineDash([]);
     }
-  }, [visibleOverlays, activeOverlayId, showOutlines, textInput, brushColor, brushSize, textFont, cursorVisible, drawingSession]);
+  }, [visibleOverlays, activeOverlayId, showOutlines, textInput, brushColor, brushSize, textFont, cursorVisible, drawingSession, isDrawing, currentPath]);
 
   const getDrawingBounds = (paths, offsetX, offsetY) => {
     const canvas = canvasRef.current;
@@ -377,83 +509,13 @@ function OverlayCanvas({
     return false;
   }, []);
 
-  // Drawing session management
-  const finalizeDrawingSession = useCallback(() => {
-    if (!drawingSession.active || drawingSession.paths.length === 0) {
-      setDrawingSession({ active: false, paths: [], startTime: null });
-      return;
-    }
-
-    // Save all paths as a single overlay
-    onAddOverlay({
-      paths: drawingSession.paths,
-      offsetX: 0,
-      offsetY: 0
-    });
-
-    setDrawingSession({ active: false, paths: [], startTime: null });
-    if (sessionTimeoutRef.current) {
-      clearTimeout(sessionTimeoutRef.current);
-      sessionTimeoutRef.current = null;
-    }
-  }, [drawingSession, onAddOverlay]);
-
-  const cancelDrawingSession = useCallback(() => {
-    setDrawingSession({ active: false, paths: [], startTime: null });
-    if (sessionTimeoutRef.current) {
-      clearTimeout(sessionTimeoutRef.current);
-      sessionTimeoutRef.current = null;
-    }
-  }, []);
-
-  const undoLastStroke = useCallback(() => {
-    if (drawingSession.paths.length > 0) {
-      setDrawingSession(prev => ({
-        ...prev,
-        paths: prev.paths.slice(0, -1)
-      }));
-    }
-  }, [drawingSession.paths.length]);
-
-  const acceptDrawingAndChangeTool = useCallback(() => {
-    // Use the stored paths from when the warning was triggered
-    const pathsToSave = pendingPathsRef.current;
-
-    if (pathsToSave && pathsToSave.length > 0) {
-      // Save the overlay first with explicit type
-      onAddOverlay({
-        type: 'drawing',
-        paths: pathsToSave,
-        offsetX: 0,
-        offsetY: 0
-      });
-
-      // Delay clearing the state to ensure overlay is added
-      setTimeout(() => {
-        setDrawingSession({ active: false, paths: [], startTime: null });
-        setPendingToolChange(null);
-        pendingPathsRef.current = null;
-      }, 0);
-    } else {
-      alert('No paths found - this should not happen!');
-      setPendingToolChange(null);
-    }
-  }, [onAddOverlay]);
-
-  const rejectDrawingAndChangeTool = useCallback(() => {
-    setDrawingSession({ active: false, paths: [], startTime: null });
-    setPendingToolChange(null);
-    pendingPathsRef.current = null;
-  }, []);
-
-  // Detect tool change when drawing session is active
+  // Detect tool change when drawing session is active - auto-finalize
   useEffect(() => {
-    if (drawingSession.active && tool !== 'draw' && !pendingToolChange) {
-      // Store the current paths before showing warning
-      pendingPathsRef.current = [...drawingSession.paths];
-      setPendingToolChange(tool);
+    if (drawingSession.active && tool !== 'draw') {
+      // Auto-finalize when switching tools
+      finalizeDrawingSession();
     }
-  }, [tool, drawingSession.active, drawingSession.paths, pendingToolChange]);
+  }, [tool, drawingSession.active, finalizeDrawingSession]);
 
   // Auto-finalize when video starts playing
   useEffect(() => {
@@ -463,11 +525,6 @@ function OverlayCanvas({
   }, [isPlaying, drawingSession.active, finalizeDrawingSession]);
 
   const startDrawing = useCallback((e) => {
-    // Prevent any tool action if there's a pending tool change warning
-    if (pendingToolChange) {
-      return;
-    }
-
     // Prevent default touch behavior (scrolling) on mobile
     if (e.touches) {
       e.preventDefault();
@@ -554,7 +611,7 @@ function OverlayCanvas({
       ctx.lineWidth = brushSize;
       ctx.moveTo(coords.x, coords.y);
     }
-  }, [isPlaying, tool, brushColor, brushSize, getCoordinates, visibleOverlays, checkOverlayHit, onSelectOverlay, onTogglePlayPause, pendingToolChange]);
+  }, [isPlaying, tool, brushColor, brushSize, getCoordinates, visibleOverlays, checkOverlayHit, onSelectOverlay, onTogglePlayPause, setBrushColor, setBrushSize, setTextFont]);
 
   const draw = useCallback((e) => {
     // Prevent default touch behavior (scrolling) on mobile
@@ -639,27 +696,6 @@ function OverlayCanvas({
     setCurrentPath([]);
   }, [isDrawing, currentPath, brushColor, brushSize, isDragging]);
 
-  const handleTextSubmit = useCallback(() => {
-    if (textInput.value.trim()) {
-      const canvas = canvasRef.current;
-      if (!canvas) return;
-      const rect = canvas.getBoundingClientRect();
-
-      // Convert absolute coordinates to relative
-      onAddOverlay({
-        text: textInput.value,
-        x: textInput.x / rect.width,
-        y: textInput.y / rect.height,
-        color: brushColor,
-        size: brushSize * 6,
-        font: textFont,
-        offsetX: 0,
-        offsetY: 0
-      });
-    }
-    setTextInput({ show: false, x: 0, y: 0, value: '' });
-  }, [textInput, brushColor, brushSize, textFont, onAddOverlay]);
-
   const getCursor = () => {
     if (isPlaying) return 'default';
     if (isDragging) return 'move';
@@ -693,114 +729,50 @@ function OverlayCanvas({
         </div>
       )}
 
-      {drawingSession.active && (
-        <div className="mobile-drawing-controls">
-          {pendingToolChange ? (
-            <>
-              <div className="session-indicator warning">
-                Finish drawing first?<br />
-                {drawingSession.paths.length} stroke{drawingSession.paths.length !== 1 ? 's' : ''}
-              </div>
-              <div className="control-buttons">
-                <button
-                  className="control-btn cancel-btn"
-                  onClick={rejectDrawingAndChangeTool}
-                  title="Discard drawing"
-                >
-                  Discard
-                </button>
-                <button
-                  className="control-btn done-btn"
-                  onClick={acceptDrawingAndChangeTool}
-                  title="Accept drawing"
-                >
-                  Accept
-                </button>
-              </div>
-            </>
-          ) : (
-            <>
-              <div className="session-indicator">
-                Drawing... {drawingSession.paths.length} stroke{drawingSession.paths.length !== 1 ? 's' : ''}
-              </div>
-              <div className="control-buttons">
-                <button
-                  className="control-btn undo-btn"
-                  onClick={undoLastStroke}
-                  disabled={drawingSession.paths.length === 0}
-                  title="Undo last stroke"
-                >
-                  ↶
-                </button>
-                <button
-                  className="control-btn cancel-btn"
-                  onClick={cancelDrawingSession}
-                  title="Cancel drawing"
-                >
-                  ✕
-                </button>
-                <button
-                  className="control-btn done-btn"
-                  onClick={finalizeDrawingSession}
-                  title="Finish drawing"
-                >
-                  ✓
-                </button>
-              </div>
-            </>
-          )}
-        </div>
-      )}
+      {/* Drawing controls moved to toolbar */}
 
       {textInput.show && (
-        <input
+        <textarea
           ref={textInputRef}
-          type="text"
           value={textInput.value}
           onChange={(e) => setTextInput(prev => ({ ...prev, value: e.target.value }))}
           onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-              e.preventDefault();
-              if (textInput.value.trim()) {
-                const canvas = canvasRef.current;
-                if (!canvas) return;
-                const rect = canvas.getBoundingClientRect();
-
-                if (textInput.editingId) {
-                  const existingOverlay = visibleOverlays.find(o => o.id === textInput.editingId);
-                  if (existingOverlay && onUpdateOverlay) {
-                    onUpdateOverlay(textInput.editingId, {
-                      data: {
-                        ...existingOverlay.data,
-                        text: textInput.value,
-                        color: brushColor,
-                        size: brushSize * 6,
-                        font: textFont
-                      }
-                    });
-                  }
-                } else {
-                  onAddOverlay({
-                    text: textInput.value,
-                    x: textInput.x / rect.width,
-                    y: textInput.y / rect.height,
-                    color: brushColor,
-                    size: brushSize * 6,
-                    font: textFont,
-                    offsetX: 0,
-                    offsetY: 0
-                  });
-                }
-              }
-              setTextInput({ show: false, x: 0, y: 0, value: '', editingId: null });
-            } else if (e.key === 'Escape') {
+            if (e.key === 'Escape') {
               e.preventDefault();
               setTextInput({ show: false, x: 0, y: 0, value: '', editingId: null });
             }
+            // Enter key now creates line breaks naturally in textarea
+          }}
+          onFocus={(e) => {
+            // Prevent scroll on focus
+            e.preventDefault();
+            window.scrollTo(0, 0);
+          }}
+          onBlur={(e) => {
+            // Prevent blur - keep keyboard open
+            e.preventDefault();
+            if (textInputRef.current && textInput.show) {
+              setTimeout(() => {
+                if (textInputRef.current) {
+                  textInputRef.current.focus({ preventScroll: true });
+                }
+              }, 0);
+            }
+          }}
+          onClick={(e) => {
+            e.stopPropagation();
+          }}
+          onTouchStart={(e) => {
+            e.stopPropagation();
+          }}
+          onTouchMove={(e) => {
+            e.stopPropagation();
           }}
           className="mobile-text-input"
-          placeholder="Type text and press Enter"
+          placeholder=""
           autoFocus
+          aria-label="Text input"
+          inputMode="text"
         />
       )}
     </div>

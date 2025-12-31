@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import VideoPlayer from './components/VideoPlayer';
 import OverlayCanvas from './components/OverlayCanvas';
 import Timeline from './components/Timeline';
@@ -27,6 +27,12 @@ function App() {
   const [copiedOverlay, setCopiedOverlay] = useState(null);
   const [isAnimatingShare, setIsAnimatingShare] = useState(false);
   const [shareAnimationPhase, setShareAnimationPhase] = useState('');
+  const [textInputState, setTextInputState] = useState({ show: false, value: '' });
+  const finalizeTextRef = useRef(null);
+  const [drawingSessionState, setDrawingSessionState] = useState({ active: false, paths: [] });
+  const finalizeDrawingRef = useRef(null);
+  const cancelDrawingRef = useRef(null);
+  const undoStrokeRef = useRef(null);
 
   // Share animation sequence
   useEffect(() => {
@@ -190,6 +196,30 @@ function App() {
     }
   }, [playerRef]);
 
+  const handleFinalizeText = useCallback(() => {
+    if (finalizeTextRef.current) {
+      finalizeTextRef.current();
+    }
+  }, []);
+
+  const handleFinalizeDrawing = useCallback(() => {
+    if (finalizeDrawingRef.current) {
+      finalizeDrawingRef.current();
+    }
+  }, []);
+
+  const handleCancelDrawing = useCallback(() => {
+    if (cancelDrawingRef.current) {
+      cancelDrawingRef.current();
+    }
+  }, []);
+
+  const handleUndoStroke = useCallback(() => {
+    if (undoStrokeRef.current) {
+      undoStrokeRef.current();
+    }
+  }, []);
+
   return (
     <div className="app">
       <header className="app-header">
@@ -269,6 +299,12 @@ function App() {
                     window.history.replaceState({}, '', window.location.pathname);
                   }}
                   hasOverlays={overlays.length > 0}
+                  textInputState={textInputState}
+                  onFinalizeText={handleFinalizeText}
+                  drawingSessionState={drawingSessionState}
+                  onFinalizeDrawing={handleFinalizeDrawing}
+                  onCancelDrawing={handleCancelDrawing}
+                  onUndoStroke={handleUndoStroke}
                 />
               )}
 
@@ -310,11 +346,17 @@ function App() {
                   onSelectOverlay={setActiveOverlayId}
                   onTogglePlayPause={() => setIsPlaying(!isPlaying)}
                   showOutlines={!isSharedView || showEditControls}
+                  onTextInputChange={setTextInputState}
+                  onFinalizeTextRef={finalizeTextRef}
+                  onDrawingSessionChange={setDrawingSessionState}
+                  onFinalizeDrawingRef={finalizeDrawingRef}
+                  onCancelDrawingRef={cancelDrawingRef}
+                  onUndoStrokeRef={undoStrokeRef}
                 />
               </div>
               
               <div className="video-controls">
-                <button 
+                <button
                   onClick={() => setIsPlaying(!isPlaying)}
                   className="play-btn"
                 >
@@ -323,6 +365,27 @@ function App() {
                 <span className="time-display">
                   {formatTime(currentTime)} / {formatTime(duration)}
                 </span>
+                <div className="mobile-action-buttons">
+                  <button
+                    className="mobile-action-btn share-btn"
+                    onClick={handleShare}
+                    disabled={overlays.length === 0}
+                    title={overlays.length > 0 ? 'Share your creation' : 'Add overlays first'}
+                  >
+                    Share
+                  </button>
+                  <button
+                    className="mobile-action-btn new-btn"
+                    onClick={() => {
+                      setVideoLoaded(false);
+                      setVideoUrl('');
+                      setOverlays([]);
+                      window.history.replaceState({}, '', window.location.pathname);
+                    }}
+                  >
+                    New
+                  </button>
+                </div>
               </div>
             </div>
 

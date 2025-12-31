@@ -32,6 +32,10 @@
   gap: 0.25rem;
 }
 
+.text-tool-wrapper {
+  position: relative;
+}
+
 .tool-btn {
   width: 40px;
   height: 40px;
@@ -56,56 +60,125 @@
   color: white;
 }
 
-.color-buttons {
-  display: flex;
-  gap: 0.35rem;
-}
-
-.color-btn {
-  width: 28px;
-  height: 28px;
-  border: 2px solid transparent;
-  border-radius: 50%;
-  cursor: pointer;
-  transition: transform 0.15s;
-}
-
-.color-btn:hover {
-  transform: scale(1.15);
-}
-
-.color-btn.active {
-  border-color: white;
-  transform: scale(1.15);
-  box-shadow: 0 0 0 2px var(--bg-primary);
-}
-
-.font-buttons {
-  display: flex;
-  gap: 0.35rem;
-}
-
-.font-btn {
-  padding: 0.4rem 0.75rem;
-  background: var(--bg-tertiary);
+.font-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  background: var(--bg-secondary);
   border: 2px solid var(--border-color);
+  border-radius: 8px;
+  padding: 0.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  z-index: 100;
+  min-width: 100px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.font-option {
+  padding: 0.5rem 0.75rem;
+  background: var(--bg-tertiary);
+  border: 1px solid transparent;
   border-radius: 6px;
   color: var(--text-secondary);
-  font-size: 0.75rem;
+  font-size: 0.85rem;
   cursor: pointer;
   transition: all 0.15s;
-  min-width: 50px;
+  text-align: left;
 }
 
-.font-btn:hover {
-  border-color: var(--text-muted);
+.font-option:hover {
+  background: var(--bg-primary);
+  border-color: var(--border-color);
   color: var(--text-primary);
 }
 
-.font-btn.active {
+.font-option.active {
   background: var(--accent-primary);
   border-color: var(--accent-primary);
   color: white;
+}
+
+.color-picker-wrapper {
+  position: relative;
+}
+
+.rainbow-wheel-btn {
+  width: 40px;
+  height: 40px;
+  background: var(--bg-tertiary);
+  border: 3px solid var(--border-color);
+  border-radius: 50%;
+  cursor: pointer;
+  transition: all 0.15s;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.rainbow-wheel-btn:hover {
+  transform: scale(1.05);
+}
+
+.rainbow-wheel {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: conic-gradient(
+    from 0deg,
+    #ff0000 0deg,
+    #ffff00 60deg,
+    #00ff00 120deg,
+    #00ffff 180deg,
+    #0000ff 240deg,
+    #ff00ff 300deg,
+    #ff0000 360deg
+  );
+}
+
+.color-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  background: var(--bg-secondary);
+  border: 2px solid var(--border-color);
+  border-radius: 8px;
+  padding: 0.5rem;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+  z-index: 100;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.color-option {
+  width: 32px;
+  height: 32px;
+  border: 2px solid transparent;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.color-option:hover {
+  transform: scale(1.1);
+  border-color: var(--text-muted);
+}
+
+.color-option.active {
+  border-color: white;
+  transform: scale(1.1);
+  box-shadow: 0 0 0 2px var(--bg-secondary);
+}
+
+.color-option.black-color {
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.3);
+}
+
+.color-option.black-color.active {
+  box-shadow: 0 0 0 2px var(--bg-secondary), inset 0 0 0 1px rgba(255, 255, 255, 0.3);
 }
 
 .size-slider {
@@ -150,6 +223,8 @@
 
 .toolbar-actions {
   margin-left: auto;
+  display: flex;
+  gap: 0.5rem;
 }
 
 .action-btn {
@@ -182,19 +257,128 @@
   color: var(--text-primary);
 }
 
+/* Finalize text warning - inline version */
+.toolbar-finalize-inline {
+  background: rgba(255, 193, 7, 0.1);
+  border: 2px solid rgba(255, 193, 7, 0.5);
+  border-radius: 8px;
+  padding: 0.5rem 1rem;
+  animation: pulse-warning 2s infinite;
+}
+
+/* Drawing controls */
+.toolbar-drawing {
+  background: rgba(255, 193, 7, 0.1);
+  border: 2px solid rgba(255, 193, 7, 0.5);
+  border-radius: 8px;
+  padding: 0.5rem 1rem;
+  animation: pulse-warning 2s infinite;
+}
+
+@keyframes pulse-warning {
+  0%, 100% {
+    border-color: rgba(255, 193, 7, 0.5);
+  }
+  50% {
+    border-color: rgba(255, 193, 7, 0.9);
+  }
+}
+
+
+.warning-icon {
+  font-size: 1rem;
+  color: #ffc107;
+}
+
+.warning-text {
+  font-size: 0.75rem;
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.finalize-btn-inline {
+  padding: 0.5rem 1.25rem;
+  background: var(--accent-secondary);
+  color: var(--bg-primary);
+  border: none;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.finalize-btn-inline:hover {
+  background: #00ffcc;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 255, 170, 0.3);
+}
+
+.drawing-btn {
+  padding: 0.5rem 0.75rem;
+  border: none;
+  border-radius: 6px;
+  font-size: 1.1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 40px;
+}
+
+.drawing-btn.undo-btn {
+  background: linear-gradient(135deg, #ffaa00, #cc8800);
+  color: #fff;
+}
+
+.drawing-btn.undo-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, #ffaa00, #ffaa00);
+  box-shadow: 0 4px 8px rgba(255, 170, 0, 0.4);
+}
+
+.drawing-btn.undo-btn:disabled {
+  background: linear-gradient(135deg, #666, #444);
+  color: #999;
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.drawing-btn.cancel-btn {
+  background: linear-gradient(135deg, #ff3366, #cc0044);
+  color: #fff;
+}
+
+.drawing-btn.cancel-btn:hover {
+  background: linear-gradient(135deg, #ff3366, #ff3366);
+  box-shadow: 0 4px 8px rgba(255, 51, 102, 0.4);
+}
+
+.drawing-btn.done-btn {
+  background: linear-gradient(135deg, #00ff88, #00cc6a);
+  color: #000;
+}
+
+.drawing-btn.done-btn:hover {
+  background: linear-gradient(135deg, #00ff88, #00ff88);
+  box-shadow: 0 4px 8px rgba(0, 255, 136, 0.4);
+}
+
 @media (max-width: 768px) {
   .toolbar {
     gap: 1rem;
     padding: 1rem;
   }
-  
+
   .toolbar-section {
     flex-wrap: wrap;
   }
-  
+
+  /* Hide action buttons on mobile - they're shown in video controls instead */
   .toolbar-actions {
-    width: 100%;
-    margin-left: 0;
-    justify-content: center;
+    display: none;
   }
 }

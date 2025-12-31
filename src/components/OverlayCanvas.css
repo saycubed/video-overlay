@@ -159,29 +159,32 @@
   opacity: 0.5;
 }
 
-/* Mobile text input */
+/* Mobile text input - invisible but functional for keyboard */
 .mobile-text-input {
-  position: fixed;
-  bottom: 20px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: calc(100% - 32px);
-  max-width: 500px;
-  padding: 16px 20px;
-  font-size: 1.125rem;
-  background: rgba(0, 0, 0, 0.95);
-  border: 2px solid var(--accent-secondary);
-  border-radius: 12px;
-  color: var(--text-primary);
-  outline: none;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
-  z-index: 1001;
-  font-family: inherit;
-}
-
-.mobile-text-input::placeholder {
-  color: var(--text-muted);
-  opacity: 0.7;
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  width: 100% !important;
+  height: 1px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  opacity: 0.01 !important;
+  border: none !important;
+  outline: none !important;
+  background: transparent !important;
+  color: transparent !important;
+  caret-color: transparent !important;
+  resize: none !important;
+  overflow: hidden !important;
+  z-index: 9999 !important;
+  font-size: 16px !important; /* Prevent iOS zoom on focus */
+  -webkit-tap-highlight-color: transparent !important;
+  -webkit-touch-callout: none !important;
+  touch-action: none !important;
+  transform: translateZ(0) !important;
+  -webkit-transform: translateZ(0) !important;
+  pointer-events: auto !important;
 }
 
 /* Zoom controls */
