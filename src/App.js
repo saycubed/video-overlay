@@ -33,6 +33,7 @@ function App() {
   const finalizeDrawingRef = useRef(null);
   const cancelDrawingRef = useRef(null);
   const undoStrokeRef = useRef(null);
+  const [videoAspectRatio, setVideoAspectRatio] = useState(16 / 9);
 
   // Share animation sequence
   useEffect(() => {
@@ -138,6 +139,11 @@ function App() {
     setVideoLoaded(true);
     setOverlays([]);
     setCurrentTime(0);
+    setVideoAspectRatio(16 / 9); // Reset to default on new video load
+  }, []);
+
+  const handleVideoReady = useCallback((videoInfo) => {
+    setVideoAspectRatio(videoInfo.aspectRatio);
   }, []);
 
   const handleTimeUpdate = useCallback((time) => {
@@ -311,6 +317,7 @@ function App() {
               <div className="video-area">
               <div
                 className="video-wrapper"
+                style={{ aspectRatio: `${videoAspectRatio}` }}
                 onClick={(e) => {
                   // Only toggle play/pause if clicking the video wrapper itself
                   if (e.target.classList.contains('video-wrapper') ||
@@ -329,6 +336,7 @@ function App() {
                   onPlay={() => setIsPlaying(true)}
                   onPause={() => setIsPlaying(false)}
                   setPlayerRef={setPlayerRef}
+                  onVideoReady={handleVideoReady}
                 />
                 <OverlayCanvas
                   tool={tool}
