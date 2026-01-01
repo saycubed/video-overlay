@@ -76,7 +76,8 @@ function Toolbar({
                   <button
                     key={font.name}
                     className={`font-option ${textFont === font.name ? 'active' : ''}`}
-                    onClick={() => {
+                    onClick={(e) => {
+                      e.stopPropagation();
                       setTextFont(font.name);
                       setShowFontDropdown(false);
                     }}
