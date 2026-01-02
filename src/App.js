@@ -143,6 +143,8 @@ function App() {
   }, []);
 
   const handleVideoReady = useCallback((videoInfo) => {
+    console.log('Video ready with info:', videoInfo);
+    console.log('Setting aspect ratio to:', videoInfo.aspectRatio);
     setVideoAspectRatio(videoInfo.aspectRatio);
   }, []);
 
@@ -318,7 +320,9 @@ function App() {
               <div
                 className="video-wrapper"
                 style={{ aspectRatio: `${videoAspectRatio}` }}
+                data-aspect-ratio={videoAspectRatio}
                 onClick={(e) => {
+                  console.log('Current aspect ratio:', videoAspectRatio);
                   // Only toggle play/pause if clicking the video wrapper itself
                   if (e.target.classList.contains('video-wrapper') ||
                       e.target.closest('.video-player')) {

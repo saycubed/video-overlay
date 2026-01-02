@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import './Toolbar.css';
 
 const COLORS = [
@@ -40,6 +40,25 @@ function Toolbar({
 }) {
   const [showFontDropdown, setShowFontDropdown] = useState(false);
   const [showColorDropdown, setShowColorDropdown] = useState(false);
+  const fontDropdownRef = useRef(null);
+  const colorDropdownRef = useRef(null);
+
+  // Close dropdowns when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (fontDropdownRef.current && !fontDropdownRef.current.contains(event.target)) {
+        setShowFontDropdown(false);
+      }
+      if (colorDropdownRef.current && !colorDropdownRef.current.contains(event.target)) {
+        setShowColorDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   return (
     <div className={`toolbar ${className}`} style={style}>
@@ -59,7 +78,7 @@ function Toolbar({
           >
             ✎
           </button>
-          <div className="text-tool-wrapper">
+          <div className="text-tool-wrapper" ref={fontDropdownRef}>
             <button
               className={`tool-btn ${tool === 'text' ? 'active' : ''}`}
               onClick={() => {
@@ -93,7 +112,7 @@ function Toolbar({
       </div>
 
       <div className="toolbar-section">
-        <div className="color-picker-wrapper">
+        <div className="color-picker-wrapper" ref={colorDropdownRef}>
           <button
             className="rainbow-wheel-btn"
             onClick={() => setShowColorDropdown(!showColorDropdown)}

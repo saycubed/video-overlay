@@ -48,20 +48,35 @@ function OverlayCanvas({
   const lastClickTimeRef = useRef(0);
   const lastClickIdRef = useRef(null);
 
-  // Initialize canvas
+  // Initialize and resize canvas
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const rect = canvas.getBoundingClientRect();
-    canvas.width = rect.width * 2;
-    canvas.height = rect.height * 2;
+    const updateCanvasSize = () => {
+      const rect = canvas.getBoundingClientRect();
+      canvas.width = rect.width * 2;
+      canvas.height = rect.height * 2;
 
-    const ctx = canvas.getContext('2d');
-    ctx.scale(2, 2);
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-    contextRef.current = ctx;
+      const ctx = canvas.getContext('2d');
+      ctx.scale(2, 2);
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      contextRef.current = ctx;
+    };
+
+    updateCanvasSize();
+
+    // Watch for size changes (aspect ratio changes)
+    const resizeObserver = new ResizeObserver(() => {
+      updateCanvasSize();
+    });
+
+    resizeObserver.observe(canvas);
+
+    return () => {
+      resizeObserver.disconnect();
+    };
   }, []);
 
   // Cursor blinking animation
