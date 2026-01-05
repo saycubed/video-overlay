@@ -26,9 +26,6 @@ function Toolbar({
   setBrushSize,
   textFont,
   setTextFont,
-  onShare,
-  onNewVideo,
-  hasOverlays,
   className = '',
   style = {},
   textInputState,
@@ -199,23 +196,6 @@ function Toolbar({
           </button>
         </div>
       )}
-
-      <div className="toolbar-section toolbar-actions">
-        <button
-          className="action-btn share-btn"
-          onClick={onShare}
-          disabled={!hasOverlays}
-          title={hasOverlays ? 'Share your creation' : 'Add overlays first'}
-        >
-          Share
-        </button>
-        <button
-          className="action-btn new-btn"
-          onClick={onNewVideo}
-        >
-          New
-        </button>
-      </div>
     </div>
   );
 }

@@ -1,5 +1,132 @@
-import React, { useRef, useCallback } from 'react';
+import React, { useRef, useCallback, useState, useEffect } from 'react';
 import './Timeline.css';
+
+function TimeInput({ value, onChange, min = 0, max = Infinity, label, position = 'left' }) {
+  const [isHolding, setIsHolding] = useState(false);
+  const holdTimerRef = useRef(null);
+  const intervalRef = useRef(null);
+  const speedUpTimerRef = useRef(null);
+  const [speed, setSpeed] = useState(100); // ms between increments
+
+  const increment = useCallback(() => {
+    onChange(Math.min(max, value + 0.1));
+  }, [value, max, onChange]);
+
+  const decrement = useCallback(() => {
+    onChange(Math.max(min, value - 0.1));
+  }, [value, min, onChange]);
+
+  const startHold = useCallback((direction) => {
+    setIsHolding(true);
+    setSpeed(100);
+
+    // Initial action
+    if (direction === 'up') {
+      increment();
+    } else {
+      decrement();
+    }
+
+    // Start repeating after short delay
+    holdTimerRef.current = setTimeout(() => {
+      intervalRef.current = setInterval(() => {
+        if (direction === 'up') {
+          increment();
+        } else {
+          decrement();
+        }
+      }, speed);
+
+      // Speed up after 1 second
+      speedUpTimerRef.current = setTimeout(() => {
+        setSpeed(50);
+        if (intervalRef.current) {
+          clearInterval(intervalRef.current);
+          intervalRef.current = setInterval(() => {
+            if (direction === 'up') {
+              increment();
+            } else {
+              decrement();
+            }
+          }, 50);
+        }
+      }, 1000);
+    }, 300);
+  }, [increment, decrement, speed]);
+
+  const stopHold = useCallback(() => {
+    setIsHolding(false);
+    if (holdTimerRef.current) clearTimeout(holdTimerRef.current);
+    if (intervalRef.current) clearInterval(intervalRef.current);
+    if (speedUpTimerRef.current) clearTimeout(speedUpTimerRef.current);
+    setSpeed(100);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (holdTimerRef.current) clearTimeout(holdTimerRef.current);
+      if (intervalRef.current) clearInterval(intervalRef.current);
+      if (speedUpTimerRef.current) clearTimeout(speedUpTimerRef.current);
+    };
+  }, []);
+
+  return (
+    <div className={`time-input-wrapper time-input-${position}`}>
+      {position === 'left' && (
+        <div className="time-arrows">
+          <button
+            className="time-arrow time-arrow-up"
+            onMouseDown={() => startHold('up')}
+            onMouseUp={stopHold}
+            onMouseLeave={stopHold}
+            onTouchStart={() => startHold('up')}
+            onTouchEnd={stopHold}
+          >
+            ▲
+          </button>
+          <button
+            className="time-arrow time-arrow-down"
+            onMouseDown={() => startHold('down')}
+            onMouseUp={stopHold}
+            onMouseLeave={stopHold}
+            onTouchStart={() => startHold('down')}
+            onTouchEnd={stopHold}
+          >
+            ▼
+          </button>
+        </div>
+      )}
+      <label className="time-label">
+        <span className="time-value">{value.toFixed(1)}s</span>
+        <span className="time-label-text">{label}</span>
+      </label>
+      {position === 'right' && (
+        <div className="time-arrows">
+          <button
+            className="time-arrow time-arrow-up"
+            onMouseDown={() => startHold('up')}
+            onMouseUp={stopHold}
+            onMouseLeave={stopHold}
+            onTouchStart={() => startHold('up')}
+            onTouchEnd={stopHold}
+          >
+            ▲
+          </button>
+          <button
+            className="time-arrow time-arrow-down"
+            onMouseDown={() => startHold('down')}
+            onMouseUp={stopHold}
+            onMouseLeave={stopHold}
+            onTouchStart={() => startHold('down')}
+            onTouchEnd={stopHold}
+          >
+            ▼
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
 
 function Timeline({
   duration,
@@ -246,39 +373,23 @@ function Timeline({
           {overlays.filter(o => o.id === activeOverlayId).map(overlay => (
             <div key={overlay.id} className="overlay-details">
               <div className="time-inputs">
-                <label>
-                  Start:
-                  <input
-                    type="number"
-                    step="0.1"
-                    min="0"
-                    max={overlay.endTime - 0.5}
-                    value={overlay.startTime.toFixed(1)}
-                    onChange={(e) => onUpdateOverlay(overlay.id, { 
-                      startTime: Math.max(0, parseFloat(e.target.value) || 0) 
-                    })}
-                  />
-                </label>
-                <label>
-                  End:
-                  <input
-                    type="number"
-                    step="0.1"
-                    min={overlay.startTime + 0.5}
-                    max={duration}
-                    value={overlay.endTime.toFixed(1)}
-                    onChange={(e) => onUpdateOverlay(overlay.id, { 
-                      endTime: Math.min(duration, parseFloat(e.target.value) || 0) 
-                    })}
-                  />
-                </label>
+                <TimeInput
+                  label="Start:"
+                  value={overlay.startTime}
+                  onChange={(val) => onUpdateOverlay(overlay.id, { startTime: val })}
+                  min={0}
+                  max={overlay.endTime - 0.5}
+                  position="left"
+                />
+                <TimeInput
+                  label="End:"
+                  value={overlay.endTime}
+                  onChange={(val) => onUpdateOverlay(overlay.id, { endTime: val })}
+                  min={overlay.startTime + 0.5}
+                  max={duration}
+                  position="right"
+                />
               </div>
-              <button 
-                className="delete-btn"
-                onClick={() => onDeleteOverlay(overlay.id)}
-              >
-                Delete
-              </button>
             </div>
           ))}
         </div>

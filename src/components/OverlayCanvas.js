@@ -728,12 +728,6 @@ function OverlayCanvas({
         onTouchEnd={stopDrawing}
       />
 
-      {isPlaying && (
-        <div className="playing-indicator">
-          <span>Playing - pause to edit</span>
-        </div>
-      )}
-
       {/* Drawing controls moved to toolbar */}
 
       {textInput.show && (

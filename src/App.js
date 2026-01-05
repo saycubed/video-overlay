@@ -231,11 +231,36 @@ function App() {
   return (
     <div className="app">
       <header className="app-header">
-        <h1 className="logo">
-          <span className="logo-icon">▶</span>
-          OverlayTV
-        </h1>
-        <p className="tagline">Draw on videos. Share the fun.</p>
+        <div className="header-left">
+          <h1 className="logo">
+            <span className="logo-icon">▶</span>
+            OverlayTV
+          </h1>
+          <p className="tagline">Draw on videos. Share the fun.</p>
+        </div>
+        {videoLoaded && (
+          <div className="header-actions">
+            <button
+              className="header-action-btn share-btn"
+              onClick={handleShare}
+              disabled={overlays.length === 0}
+              title={overlays.length > 0 ? 'Share your creation' : 'Add overlays first'}
+            >
+              Share
+            </button>
+            <button
+              className="header-action-btn new-btn"
+              onClick={() => {
+                setVideoLoaded(false);
+                setVideoUrl('');
+                setOverlays([]);
+                window.history.replaceState({}, '', window.location.pathname);
+              }}
+            >
+              New
+            </button>
+          </div>
+        )}
       </header>
 
       <main className="app-main">
@@ -299,14 +324,6 @@ function App() {
                   setBrushSize={setBrushSize}
                   textFont={textFont}
                   setTextFont={setTextFont}
-                  onShare={handleShare}
-                  onNewVideo={() => {
-                    setVideoLoaded(false);
-                    setVideoUrl('');
-                    setOverlays([]);
-                    window.history.replaceState({}, '', window.location.pathname);
-                  }}
-                  hasOverlays={overlays.length > 0}
                   textInputState={textInputState}
                   onFinalizeText={handleFinalizeText}
                   drawingSessionState={drawingSessionState}
@@ -368,52 +385,40 @@ function App() {
               </div>
               
               <div className="video-controls">
-                <button
-                  onClick={() => setIsPlaying(!isPlaying)}
-                  className="play-btn"
-                >
-                  {isPlaying ? '❚❚' : '▶'}
-                </button>
-                <span className="time-display">
-                  {formatTime(currentTime)} / {formatTime(duration)}
-                </span>
-                <div className="mobile-action-buttons">
+                <div className="playback-controls">
                   <button
-                    className="mobile-action-btn share-btn"
-                    onClick={handleShare}
-                    disabled={overlays.length === 0}
-                    title={overlays.length > 0 ? 'Share your creation' : 'Add overlays first'}
+                    onClick={() => setIsPlaying(!isPlaying)}
+                    className="play-btn"
                   >
-                    Share
+                    {isPlaying ? '❚❚' : '▶'}
                   </button>
-                  <button
-                    className="mobile-action-btn new-btn"
-                    onClick={() => {
-                      setVideoLoaded(false);
-                      setVideoUrl('');
-                      setOverlays([]);
-                      window.history.replaceState({}, '', window.location.pathname);
-                    }}
-                  >
-                    New
-                  </button>
+                  {activeOverlayId && (!isSharedView || showEditControls) && (
+                    <button
+                      className="delete-btn-inline"
+                      onClick={() => deleteOverlay(activeOverlayId)}
+                      title="Delete overlay"
+                    >
+                      ✕
+                    </button>
+                  )}
                 </div>
+
+                {(!isSharedView || showEditControls) && (
+                  <Timeline
+                    style={showShareModal ? { display: 'none' } : {}}
+                    duration={duration}
+                    currentTime={currentTime}
+                    overlays={overlays}
+                    activeOverlayId={activeOverlayId}
+                    onSeek={seekTo}
+                    onSelectOverlay={setActiveOverlayId}
+                    onUpdateOverlay={updateOverlay}
+                    onDeleteOverlay={deleteOverlay}
+                    className="timeline-inline"
+                  />
+                )}
               </div>
             </div>
-
-              {(!isSharedView || showEditControls) && (
-                <Timeline
-                  style={showShareModal ? { display: 'none' } : {}}
-                  duration={duration}
-                  currentTime={currentTime}
-                  overlays={overlays}
-                  activeOverlayId={activeOverlayId}
-                  onSeek={seekTo}
-                  onSelectOverlay={setActiveOverlayId}
-                  onUpdateOverlay={updateOverlay}
-                  onDeleteOverlay={deleteOverlay}
-                />
-              )}
             </div>
 
             {/* Share animation elements */}

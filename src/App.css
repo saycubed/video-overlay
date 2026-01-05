@@ -8,11 +8,63 @@
 .app-header {
   padding: 0.75rem 1.5rem;
   display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  border-bottom: 1px solid var(--border-color);
+  background: linear-gradient(180deg, var(--bg-secondary) 0%, var(--bg-primary) 100%);
+}
+
+.header-left {
+  display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: 0.25rem;
-  border-bottom: 1px solid var(--border-color);
-  background: linear-gradient(180deg, var(--bg-secondary) 0%, var(--bg-primary) 100%);
+}
+
+.header-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.header-action-btn {
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.header-action-btn.share-btn {
+  background: var(--accent-secondary);
+  color: var(--bg-primary);
+}
+
+.header-action-btn.share-btn:hover:not(:disabled) {
+  background: #00ffcc;
+  transform: translateY(-1px);
+}
+
+.header-action-btn.share-btn:disabled {
+  background: #555;
+  color: #888;
+  cursor: not-allowed;
+}
+
+.header-action-btn.new-btn {
+  background: transparent;
+  border: 2px solid var(--border-color);
+  color: var(--text-secondary);
+}
+
+.header-action-btn.new-btn:hover {
+  border-color: var(--text-muted);
+  color: var(--text-primary);
+  transform: translateY(-1px);
 }
 
 .logo {
@@ -47,6 +99,7 @@
 .app-main {
   flex: 1;
   padding: 2rem;
+  padding-bottom: 120px; /* Space for fixed controls */
 }
 
 /* URL Input Screen */
@@ -149,13 +202,49 @@
 }
 
 .video-controls {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
   display: flex;
   align-items: center;
   gap: 1rem;
   padding: 0.75rem 1rem;
   background: var(--bg-secondary);
-  border-radius: 8px;
-  border: 1px solid var(--border-color);
+  border-top: 1px solid var(--border-color);
+  border-radius: 0;
+  z-index: 1000;
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.3);
+  overflow-x: hidden;
+}
+
+.playback-controls {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.timeline-inline {
+  flex: 1;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.timeline-inline .timeline-container {
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+}
+
+.timeline-inline .timeline-header {
+  display: none;
+}
+
+.timeline-inline .overlay-editor {
+  margin-top: 0.5rem;
 }
 
 .play-btn {
@@ -173,6 +262,28 @@
 
 .play-btn:hover {
   background: #ff4477;
+  transform: scale(1.05);
+}
+
+.delete-btn-inline {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  background: transparent;
+  border: 2px solid #ff4444;
+  border-radius: 4px;
+  color: #ff4444;
+  font-size: 1.2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.delete-btn-inline:hover {
+  background: #ff4444;
+  color: white;
   transform: scale(1.05);
 }
 
@@ -314,6 +425,12 @@
 
   .video-wrapper {
     max-height: 70vh;
+  }
+
+  .delete-btn-inline {
+    width: 44px;
+    height: 44px;
+    font-size: 1.5rem;
   }
 }
 
